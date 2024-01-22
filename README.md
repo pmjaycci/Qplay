@@ -1,4 +1,4 @@
-** Qplay Project **  
+** Qplay  Project **  
 ---
 * Server 영상 링크 : https://youtu.be/6zgo1bKeIv0
 

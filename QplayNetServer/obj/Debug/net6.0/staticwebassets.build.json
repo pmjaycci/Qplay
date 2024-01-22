@@ -1,0 +1,11 @@
+{
+  "Version": 1,
+  "Hash": "ylQTxCFsq3ibdHqfBRyNwXo5BOLShqClxPobqszIFpE=",
+  "Source": "QplayNetServer",
+  "BasePath": "_content/QplayNetServer",
+  "Mode": "Default",
+  "ManifestType": "Build",
+  "ReferencedProjectsConfiguration": [],
+  "DiscoveryPatterns": [],
+  "Assets": []
+}

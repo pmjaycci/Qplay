@@ -1,17 +1,17 @@
 {
   "format": 1,
   "restore": {
-    "/Users/jaycci/projects/QplayFF/QplayNetServer/QplayNetServer.csproj": {}
+    "/Users/jaycci/projects/Qplay/QplayNetServer/QplayNetServer.csproj": {}
   },
   "projects": {
-    "/Users/jaycci/projects/QplayFF/QplayNetServer/QplayNetServer.csproj": {
+    "/Users/jaycci/projects/Qplay/QplayNetServer/QplayNetServer.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "/Users/jaycci/projects/QplayFF/QplayNetServer/QplayNetServer.csproj",
+        "projectUniqueName": "/Users/jaycci/projects/Qplay/QplayNetServer/QplayNetServer.csproj",
         "projectName": "QplayNetServer",
-        "projectPath": "/Users/jaycci/projects/QplayFF/QplayNetServer/QplayNetServer.csproj",
+        "projectPath": "/Users/jaycci/projects/Qplay/QplayNetServer/QplayNetServer.csproj",
         "packagesPath": "/Users/jaycci/.nuget/packages/",
-        "outputPath": "/Users/jaycci/projects/QplayFF/QplayNetServer/obj/",
+        "outputPath": "/Users/jaycci/projects/Qplay/QplayNetServer/obj/",
         "projectStyle": "PackageReference",
         "configFilePaths": [
           "/Users/jaycci/.nuget/NuGet/NuGet.Config"
@@ -20,7 +20,6 @@
           "net6.0"
         ],
         "sources": {
-          "/usr/local/share/dotnet/sdk/7.0.312/Sdks/Microsoft.NET.Sdk.Web/library-packs": {},
           "https://api.nuget.org/v3/index.json": {}
         },
         "frameworks": {
@@ -39,6 +38,10 @@
         "net6.0": {
           "targetAlias": "net6.0",
           "dependencies": {
+            "MySql.Data": {
+              "target": "Package",
+              "version": "[8.3.0, )"
+            },
             "Swashbuckle.AspNetCore": {
               "target": "Package",
               "version": "[6.5.0, )"
@@ -50,8 +53,7 @@
             "net47",
             "net471",
             "net472",
-            "net48",
-            "net481"
+            "net48"
           ],
           "assetTargetFallback": true,
           "warn": true,
@@ -63,7 +65,7 @@
               "privateAssets": "all"
             }
           },
-          "runtimeIdentifierGraphPath": "/usr/local/share/dotnet/sdk/7.0.312/RuntimeIdentifierGraph.json"
+          "runtimeIdentifierGraphPath": "/opt/homebrew/Cellar/dotnet@6/6.0.114/libexec/sdk/6.0.114/RuntimeIdentifierGraph.json"
         }
       }
     }

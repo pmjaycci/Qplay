@@ -1,0 +1,40 @@
+-- DATABASE 생성
+CREATE DATABASE user_db;
+CREATE DATABASE table_db;
+
+-- user_db
+-- 유저 DB
+USE user_db;
+CREATE TABLE IF NOT EXISTS account (
+    uuid VARCHAR(12) NOT NULL,
+    password VARCHAR(20) NOT NULL,
+    gender tinyint(1) DEFAULT 0,
+    model int DEFAULT 0,
+    money int DEFAULT 0,
+    last_login DATETIME DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY(uuid)
+);
+CREATE TABLE IF NOT EXISTS inventory (
+    id int AUTO_INCREMENT,
+    uuid VARCHAR(12) NOT NULL,
+    item_id int NOT NULL,
+    is_equip BOOLEAN DEFAULT false,
+    PRIMARY KEY (id),
+    INDEX(uuid)
+);
+-- 테이블 DB
+USE table_db;
+CREATE TABLE IF NOT EXISTS item (
+    id int AUTO_INCREMENT,
+    name VARCHAR(20) NOT NULL,
+    category int NOT NULL,
+    gender TINYINT(1) NOT NULL,
+    img_id VARCHAR(20),
+    PRIMARY KEY (id)
+);
+CREATE TABLE IF NOT EXISTS shop (
+    id int NOT NULL,
+    price int NOT NULL,
+    PRIMARY KEY (id),
+    FOREIGN KEY (id) REFERENCES item(id)
+);

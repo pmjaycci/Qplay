@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "dgSpecHash": "5etMy736yTz2zCMNF1UWpKQzLPIesFalDW5IwbzVFW9A1vN9QibN7XyS+NH/g51DKvoTqUifXIX4Ge9GmjddJQ==",
+  "dgSpecHash": "JVtLMCPa3ruNYzpjeqnGbqtLXcPAA5wpG+qPkmOHgSCENriHefD+4Jt0YjfnSc+wGHu/Lx1r+aI9eaRowaWg1w==",
   "success": true,
   "projectFilePath": "/Users/jaycci/projects/Qplay/QplayNetServer/QplayNetServer.csproj",
   "expectedPackageFiles": [
@@ -15,6 +15,7 @@
     "/Users/jaycci/.nuget/packages/microsoft.openapi/1.2.3/microsoft.openapi.1.2.3.nupkg.sha512",
     "/Users/jaycci/.nuget/packages/microsoft.win32.systemevents/4.7.0/microsoft.win32.systemevents.4.7.0.nupkg.sha512",
     "/Users/jaycci/.nuget/packages/mysql.data/8.3.0/mysql.data.8.3.0.nupkg.sha512",
+    "/Users/jaycci/.nuget/packages/newtonsoft.json/13.0.3/newtonsoft.json.13.0.3.nupkg.sha512",
     "/Users/jaycci/.nuget/packages/swashbuckle.aspnetcore/6.5.0/swashbuckle.aspnetcore.6.5.0.nupkg.sha512",
     "/Users/jaycci/.nuget/packages/swashbuckle.aspnetcore.swagger/6.5.0/swashbuckle.aspnetcore.swagger.6.5.0.nupkg.sha512",
     "/Users/jaycci/.nuget/packages/swashbuckle.aspnetcore.swaggergen/6.5.0/swashbuckle.aspnetcore.swaggergen.6.5.0.nupkg.sha512",

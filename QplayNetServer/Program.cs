@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Data.Common;
 
 public class Program
@@ -33,14 +33,9 @@ public class Program
         // -- 컨트롤러 엔드포인트 매핑 :: 라우팅된 요청을 컨트롤러 액션으로 전달
         app.MapControllers();
 
-        // 여기에 Test 클래스의 TestFunc 메서드를 호출
-        await Database.GetInstance().DatabaseConnect("LoginDB");
-        string query = $"SELECT user_name FROM time_attack_rank";
-        var test = await Database.GetInstance().Query(query, "LoginDB");
-        while(test.Read())
-        {
-            Console.WriteLine($"User ID: {test["user_name"]}");
-        }
+        Database.GetInstance().DatabaseConnect("UserDB");
+        Database.GetInstance().DatabaseConnect("TableDB");
+        await Database.GetInstance().LoadTableDatabase();
 
         app.Run();
     }

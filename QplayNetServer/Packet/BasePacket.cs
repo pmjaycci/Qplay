@@ -7,7 +7,7 @@ namespace BasePacket
 
     public class ResponsePacket
     {
-        public int MessageCode;
-        public string? Message;
+        public int MessageCode { get; set; }
+        public string? Message { get; set; }
     }
 }

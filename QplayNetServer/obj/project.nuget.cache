@@ -1,0 +1,15 @@
+{
+  "version": 2,
+  "dgSpecHash": "fpDpgXub1kwzN18Glysp7t8pGQ84n4MJ9iYScO9Xpws347GkI19Imvtj+TJO5wILFmYw8iFGav+hk0nld56qPg==",
+  "success": true,
+  "projectFilePath": "/Users/jaycci/projects/QplayFF/QplayNetServer/QplayNetServer.csproj",
+  "expectedPackageFiles": [
+    "/Users/jaycci/.nuget/packages/microsoft.extensions.apidescription.server/6.0.5/microsoft.extensions.apidescription.server.6.0.5.nupkg.sha512",
+    "/Users/jaycci/.nuget/packages/microsoft.openapi/1.2.3/microsoft.openapi.1.2.3.nupkg.sha512",
+    "/Users/jaycci/.nuget/packages/swashbuckle.aspnetcore/6.5.0/swashbuckle.aspnetcore.6.5.0.nupkg.sha512",
+    "/Users/jaycci/.nuget/packages/swashbuckle.aspnetcore.swagger/6.5.0/swashbuckle.aspnetcore.swagger.6.5.0.nupkg.sha512",
+    "/Users/jaycci/.nuget/packages/swashbuckle.aspnetcore.swaggergen/6.5.0/swashbuckle.aspnetcore.swaggergen.6.5.0.nupkg.sha512",
+    "/Users/jaycci/.nuget/packages/swashbuckle.aspnetcore.swaggerui/6.5.0/swashbuckle.aspnetcore.swaggerui.6.5.0.nupkg.sha512"
+  ],
+  "logs": []
+}

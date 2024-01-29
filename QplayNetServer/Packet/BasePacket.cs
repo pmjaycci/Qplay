@@ -11,3 +11,20 @@ namespace BasePacket
         public string? Message { get; set; }
     }
 }
+
+enum MessageCode
+{
+    Success = 200,
+    Fail = 204,
+    BadRequest = 400,
+    NotFound = 404
+}
+
+enum UserState
+{
+    Lobby,
+    Room,
+    Shop,
+    BeautyRoom
+}
+

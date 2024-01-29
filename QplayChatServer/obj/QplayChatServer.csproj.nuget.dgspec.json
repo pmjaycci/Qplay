@@ -1,0 +1,81 @@
+{
+  "format": 1,
+  "restore": {
+    "/Users/jaycci/projects/Qplay/QplayChatServer/QplayChatServer.csproj": {}
+  },
+  "projects": {
+    "/Users/jaycci/projects/Qplay/QplayChatServer/QplayChatServer.csproj": {
+      "version": "1.0.0",
+      "restore": {
+        "projectUniqueName": "/Users/jaycci/projects/Qplay/QplayChatServer/QplayChatServer.csproj",
+        "projectName": "QplayChatServer",
+        "projectPath": "/Users/jaycci/projects/Qplay/QplayChatServer/QplayChatServer.csproj",
+        "packagesPath": "/Users/jaycci/.nuget/packages/",
+        "outputPath": "/Users/jaycci/projects/Qplay/QplayChatServer/obj/",
+        "projectStyle": "PackageReference",
+        "configFilePaths": [
+          "/Users/jaycci/.nuget/NuGet/NuGet.Config"
+        ],
+        "originalTargetFrameworks": [
+          "net6.0"
+        ],
+        "sources": {
+          "https://api.nuget.org/v3/index.json": {}
+        },
+        "frameworks": {
+          "net6.0": {
+            "targetAlias": "net6.0",
+            "projectReferences": {}
+          }
+        },
+        "warningProperties": {
+          "warnAsError": [
+            "NU1605"
+          ]
+        }
+      },
+      "frameworks": {
+        "net6.0": {
+          "targetAlias": "net6.0",
+          "dependencies": {
+            "BouncyCastle.NetCore": {
+              "target": "Package",
+              "version": "[2.2.1, )"
+            },
+            "MySql.Data": {
+              "target": "Package",
+              "version": "[8.0.27, )"
+            },
+            "Newtonsoft.Json": {
+              "target": "Package",
+              "version": "[13.0.3, )"
+            },
+            "Swashbuckle.AspNetCore": {
+              "target": "Package",
+              "version": "[6.5.0, )"
+            }
+          },
+          "imports": [
+            "net461",
+            "net462",
+            "net47",
+            "net471",
+            "net472",
+            "net48"
+          ],
+          "assetTargetFallback": true,
+          "warn": true,
+          "frameworkReferences": {
+            "Microsoft.AspNetCore.App": {
+              "privateAssets": "none"
+            },
+            "Microsoft.NETCore.App": {
+              "privateAssets": "all"
+            }
+          },
+          "runtimeIdentifierGraphPath": "/opt/homebrew/Cellar/dotnet@6/6.0.114/libexec/sdk/6.0.114/RuntimeIdentifierGraph.json"
+        }
+      }
+    }
+  }
+}

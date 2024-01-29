@@ -44,26 +44,28 @@ public class Database
         }
         return instance;
     }
-    public void DatabaseConnect(int connectDB)
+    public int DatabaseConnect(int connectDB)
     {
         //MySqlConnection connection = new MySqlConnection();
+        string? connect;
         switch (connectDB)
         {
             case (int)DB.UserDB:
-                //connection = (MySqlConnection)UserDB;
                 UserDB.Open();
+                connect = "User  DB Connect";
                 break;
             case (int)DB.TableDB:
-                //connection = (MySqlConnection)TableDB;
                 TableDB.Open();
+                connect = "Table DB Connect";
                 break;
+            default:
+                connect = "Not Found Table";
+                Console.WriteLine($"ConnectDB:{connect}");
+                return (int)MessageCode.NotFound;
         }
 
-        //if (connection.State != ConnectionState.Open)
-        {
-            //await connection.OpenAsync();
-            Console.WriteLine($"ConnectDB:{connectDB} Connect!!");
-        }
+        Console.WriteLine($"ConnectDB:{connect}");
+        return (int)MessageCode.Success;
     }
     #region DB 테이블 읽기 쓰기
     public async Task<MySqlDataReader> Query(string sql, int openDB)
@@ -141,7 +143,7 @@ public class Database
         }
 
     }
-    public async Task<int> ExecuteQueryWithTransaction(List<string> sqlQueries, Dictionary<string, object?> param, int openDB)
+    public async Task<int> ExecuteQueryWithTransaction(List<string> sqlQueries, List<Dictionary<string, object?>> paramList, int openDB)
     {
         MySqlConnection connection = new MySqlConnection();
         switch (openDB)
@@ -158,15 +160,19 @@ public class Database
 
         try
         {
-            foreach (string sql in sqlQueries)
+            for (int i = 0; i < paramList.Count; i++)
             {
-                using MySqlCommand cmd = new MySqlCommand(sql, connection, transaction);
-                foreach (var data in param)
+                foreach (string sql in sqlQueries)
                 {
-                    cmd.Parameters.AddWithValue(data.Key, data.Value);
+                    using MySqlCommand cmd = new MySqlCommand(sql, connection, transaction);
+                    foreach (var data in paramList[i])
+                    {
+                        cmd.Parameters.AddWithValue(data.Key, data.Value);
+                    }
+                    await cmd.ExecuteNonQueryAsync();
                 }
-                await cmd.ExecuteNonQueryAsync();
             }
+
 
             await transaction.CommitAsync();
             return (int)MessageCode.Success;

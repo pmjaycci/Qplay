@@ -33,10 +33,10 @@ public class Program
         // -- 컨트롤러 엔드포인트 매핑 :: 라우팅된 요청을 컨트롤러 액션으로 전달
         app.MapControllers();
 
-        Database.GetInstance().DatabaseConnect("UserDB");
-        Database.GetInstance().DatabaseConnect("TableDB");
+        Database.GetInstance().DatabaseConnect((int)DB.UserDB);
+        Database.GetInstance().DatabaseConnect((int)DB.TableDB);
         await Database.GetInstance().LoadTableDatabase();
 
-        app.Run();
+        app.Run("http://localhost:5000");
     }
 }

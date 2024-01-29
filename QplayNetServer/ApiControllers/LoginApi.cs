@@ -17,13 +17,13 @@ namespace LoginApi
             return Ok(jsonData);
         }
 
-
+        //TODO 캐싱테이블 정보 넘겨줘야함
         private async Task<ResponseLogin> LoginCheck(RequestLogin request)
         {
             var sql = $"SELECT password, gender, model, money, last_login FROM account WHERE uuid = @uuid";
             var param = new Dictionary<string, object?>();
             param["@uuid"] = request.Id;
-            var result = await Database.GetInstance().Query(sql, param, "UserDB");
+            var result = await Database.GetInstance().Query(sql, param, (int)DB.UserDB);
             ResponseLogin response = new ResponseLogin();
             string? password;
             if (!result.HasRows)

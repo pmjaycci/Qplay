@@ -114,6 +114,7 @@ namespace QplayChatServer
                     var WebReadMessages = new WebReadMessages();
                     await WebReadMessages.ExitRoom(userName);
                     users.TryRemove(userName, out _);
+                    Console.WriteLine($"유저 로그아웃! 정보 제거: {userName}");
                 }
 
                 client.Close();

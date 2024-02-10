@@ -1,31 +1,33 @@
 using System.Configuration;
 using Microsoft.AspNetCore.Mvc;
 using Newtonsoft.Json;
-using Packet;
+using Util;
 namespace LoginApi
 {
+    //TODO: 레디스 추가해서 세션처리해줘야함
     [ApiController]
     [Route("api/[controller]")]
     public class LoginController : ControllerBase
     {
         [HttpPost]
-        public async Task<IActionResult> Post([FromBody] RequestLogin request)
+        public async Task<IActionResult> Post([FromBody] Request.Login request)
         {
+            string? testData = JsonConvert.SerializeObject(request);
+            Console.WriteLine(testData);
 
-            ResponseLogin response = await LoginCheck(request);
+            Response.Packet response = await LoginCheck(request);
             string? jsonData = JsonConvert.SerializeObject(response);
             return Ok(jsonData);
         }
 
-        //TODO 캐싱테이블 정보 넘겨줘야함
-        private async Task<ResponseLogin> LoginCheck(RequestLogin request)
+        private async Task<Response.Packet> LoginCheck(Request.Login request)
         {
-            var sql = $"SELECT password, gender, model, money, last_login FROM account WHERE uuid = @uuid";
+            var sql = $"SELECT password FROM account WHERE uuid = @uuid";
             var param = new Dictionary<string, object?>();
             param["@uuid"] = request.Id;
             var result = await Database.GetInstance().Query(sql, param, (int)DB.UserDB);
-            ResponseLogin response = new ResponseLogin();
-            string? password;
+            Response.Packet response = new Response.Packet();
+
             if (!result.HasRows)
             {
                 response.MessageCode = 100;
@@ -33,9 +35,11 @@ namespace LoginApi
                 result.Close();
                 return response;
             }
-            if (result.Read())
+
+            while (result.Read())
             {
-                password = Convert.ToString(result["password"]);
+                string? password = Convert.ToString(result["password"]);
+
                 if (password != request.Password)
                 {
                     response.MessageCode = 100;
@@ -45,13 +49,49 @@ namespace LoginApi
                 }
                 response.MessageCode = 200;
                 response.Message = "로그인에 성공하였습니다.";
-                response.Gender = Convert.ToInt32(result["gender"]);
-                response.Model = Convert.ToInt32(result["model"]);
-                response.Money = Convert.ToInt32(result["money"]);
-                response.LastLogin = Convert.ToString(result["last_login"]);
             }
+
             result.Close();
             return response;
         }
     }
+
+
+
+    [ApiController]
+    [Route("api/[controller]")]
+    public class LoadTableController : ControllerBase
+    {
+        [HttpPost]
+        public IActionResult Post([FromBody] Request.LoadTable request)
+        {
+
+            Response.LoadTable response = LoadTable(request);
+            string? jsonData = JsonConvert.SerializeObject(response);
+            return Ok(jsonData);
+        }
+
+        //TODO 캐싱테이블 정보 넘겨줘야함
+        private Response.LoadTable LoadTable(Request.LoadTable request)
+        {
+            float version = 0.1f;
+            var response = new Response.LoadTable();
+            Console.WriteLine($"Request Version:{request.Version} / Server Version:{version}");
+            if (request.Version != version)
+            {
+                response.Message = "Version is Low";
+                response.MessageCode = (int)MessageCode.Fail;
+                return response;
+            }
+            response.Message = "Success";
+            response.MessageCode = (int)MessageCode.Success;
+            response.ShopTable = Database.GetInstance().ShopTable;
+            response.ItemTable = Database.GetInstance().ItemTable;
+
+            return response;
+
+
+        }
+    }
+
 }

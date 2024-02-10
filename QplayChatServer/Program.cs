@@ -1,5 +1,6 @@
 ﻿using QplayChatServer;
 using QplayChatServer.server;
+using Util;
 
 class Program
 {
@@ -10,8 +11,10 @@ class Program
         var cts = new CancellationTokenSource();
         ServerManager.GetInstance().Token = cts.Token;
         //-- Database 연결
-        if ((int)MessageCode.Success == Database.GetInstance().DatabaseConnect((int)DB.TableDB)) return;
-        if ((int)MessageCode.Success == Database.GetInstance().DatabaseConnect((int)DB.UserDB)) return;
+        var databse = Database.GetInstance();
+        Console.WriteLine("-----------------");
+        if ((int)MessageCode.Success != databse.DatabaseConnect((int)DB.TableDB)) return;
+        if ((int)MessageCode.Success != databse.DatabaseConnect((int)DB.UserDB)) return;
 
         //-- DB테이블 캐싱
         await Database.GetInstance().LoadTableDatabase();

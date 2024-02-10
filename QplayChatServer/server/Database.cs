@@ -1,5 +1,7 @@
 using System.Data;
 using MySql.Data.MySqlClient;
+using Table;
+using Util;
 
 public class Database
 {
@@ -9,20 +11,7 @@ public class Database
     public IDbConnection UserDB;
     public IDbConnection TableDB;
 
-    public class Item
-    {
-        public int Id;
-        public string? Name;
-        public int Category;
-        public int Gender;
-        public string? ImgId;
-    }
     public Dictionary<int, Item> ItemTable = new Dictionary<int, Item>();
-    public class ShopItem
-    {
-        public int Id;
-        public int Price;
-    }
     public Dictionary<int, ShopItem> ShopTable = new Dictionary<int, ShopItem>();
 
     private Database()
@@ -46,7 +35,6 @@ public class Database
     }
     public int DatabaseConnect(int connectDB)
     {
-        //MySqlConnection connection = new MySqlConnection();
         string? connect;
         switch (connectDB)
         {
@@ -160,25 +148,24 @@ public class Database
 
         try
         {
-            for (int i = 0; i < paramList.Count; i++)
+            for (int i = 0; i < sqlQueries.Count; i++)
             {
-                foreach (string sql in sqlQueries)
+                using MySqlCommand cmd = new MySqlCommand(sqlQueries[i], connection, transaction);
+                foreach (var data in paramList[i])
                 {
-                    using MySqlCommand cmd = new MySqlCommand(sql, connection, transaction);
-                    foreach (var data in paramList[i])
-                    {
-                        cmd.Parameters.AddWithValue(data.Key, data.Value);
-                    }
-                    await cmd.ExecuteNonQueryAsync();
+                    cmd.Parameters.AddWithValue(data.Key, data.Value);
                 }
+                await cmd.ExecuteNonQueryAsync();
             }
-
 
             await transaction.CommitAsync();
             return (int)MessageCode.Success;
         }
-        catch
+        catch (Exception e)
         {
+            Console.WriteLine($"ExecuteQueryWithTransaction Error!!::\n{e.Message}");
+            foreach (var sql in sqlQueries)
+                Console.WriteLine($"SQL:{sql}");
             await transaction.RollbackAsync();
             return (int)MessageCode.Fail;
         }
@@ -186,14 +173,15 @@ public class Database
     #endregion
     public async Task LoadTableDatabase()
     {
+        Console.WriteLine("-----------------");
         Console.WriteLine("ItemTable 캐싱 시작");
 
         string query = "SELECT * FROM item";
 
         var result = await Query(query, (int)DB.TableDB);
-        Item item = new Item();
         while (result.Read())
         {
+            Item item = new Item();
             item.Id = Convert.ToInt32(result["id"]);
             item.Name = Convert.ToString(result["name"]);
             item.Category = Convert.ToInt32(result["category"]);
@@ -208,9 +196,9 @@ public class Database
         Console.WriteLine("ShopTable 캐싱 시작");
         query = "SELECT * FROM shop";
         result = await Query(query, (int)DB.TableDB);
-        ShopItem shopItem = new ShopItem();
         while (result.Read())
         {
+            ShopItem shopItem = new ShopItem();
             shopItem.Id = Convert.ToInt32(result["id"]);
             shopItem.Price = Convert.ToInt32(result["price"]);
             ShopTable[shopItem.Id] = shopItem;
@@ -218,20 +206,5 @@ public class Database
         result.Close();
         Console.WriteLine("ShopTable 캐싱 완료");
         Console.WriteLine("-----------------");
-
-
-        Console.WriteLine("Item");
-        foreach (var test in ItemTable.Values)
-        {
-            Console.WriteLine($"id: {test.Id} / name: {test.Name} / category: {test.Category} / gender: {test.Gender} / imgId: {test.ImgId}");
-        }
-        Console.WriteLine("-----------------");
-
     }
-}
-
-enum DB
-{
-    UserDB,
-    TableDB
 }

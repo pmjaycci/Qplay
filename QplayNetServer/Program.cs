@@ -1,6 +1,4 @@
-using System;
-using System.Data.Common;
-
+using Util;
 public class Program
 {
     public static async Task Main(string[] args)
@@ -23,6 +21,22 @@ public class Program
             app.UseSwagger();
             app.UseSwaggerUI();
         }
+        // 전역적인 미들웨어 추가
+        app.Use(async (context, next) =>
+        {
+            // 요청의 content-type을 확인하고 필요에 따라 설정
+            string contentType = context.Request.Headers["Content-Type"];
+
+            // 예시: JSON 데이터를 기대하는 경우
+            if (contentType != null && contentType.Equals("application/json", StringComparison.OrdinalIgnoreCase))
+            {
+                // content-type을 설정
+                context.Response.Headers["Content-Type"] = "application/json; charset=utf-8";
+            }
+
+            // 다음 미들웨어로 전달
+            await next();
+        });
 
         // -- Http요청을 Https로 리디렉션
         app.UseHttpsRedirection();

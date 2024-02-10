@@ -1,5 +1,6 @@
 using System.Data;
 using MySql.Data.MySqlClient;
+using Util;
 
 public class Database
 {
@@ -9,20 +10,7 @@ public class Database
     public IDbConnection UserDB;
     public IDbConnection TableDB;
 
-    public class Item
-    {
-        public int Id;
-        public string? Name;
-        public int Category;
-        public int Gender;
-        public string? ImgId;
-    }
     public Dictionary<int, Item> ItemTable = new Dictionary<int, Item>();
-    public class ShopItem
-    {
-        public int Id;
-        public int Price;
-    }
     public Dictionary<int, ShopItem> ShopTable = new Dictionary<int, ShopItem>();
 
     private Database()
@@ -44,26 +32,28 @@ public class Database
         }
         return instance;
     }
-    public void DatabaseConnect(int connectDB)
+    public int DatabaseConnect(int connectDB)
     {
         //MySqlConnection connection = new MySqlConnection();
+        string? connect;
         switch (connectDB)
         {
             case (int)DB.UserDB:
-                //connection = (MySqlConnection)UserDB;
                 UserDB.Open();
+                connect = "User  DB Connect";
                 break;
             case (int)DB.TableDB:
-                //connection = (MySqlConnection)TableDB;
                 TableDB.Open();
+                connect = "Table DB Connect";
                 break;
+            default:
+                connect = "Not Found Table";
+                Console.WriteLine($"ConnectDB:{connect}");
+                return (int)MessageCode.NotFound;
         }
 
-        //if (connection.State != ConnectionState.Open)
-        {
-            //await connection.OpenAsync();
-            Console.WriteLine($"ConnectDB:{connectDB} Connect!!");
-        }
+        Console.WriteLine($"ConnectDB:{connect}");
+        return (int)MessageCode.Success;
     }
     #region DB 테이블 읽기 쓰기
     public async Task<MySqlDataReader> Query(string sql, int openDB)
@@ -141,7 +131,7 @@ public class Database
         }
 
     }
-    public async Task<int> ExecuteQueryWithTransaction(List<string> sqlQueries, Dictionary<string, object?> param, int openDB)
+    public async Task<int> ExecuteQueryWithTransaction(List<string> sqlQueries, List<Dictionary<string, object?>> paramList, int openDB)
     {
         MySqlConnection connection = new MySqlConnection();
         switch (openDB)
@@ -158,15 +148,19 @@ public class Database
 
         try
         {
-            foreach (string sql in sqlQueries)
+            for (int i = 0; i < paramList.Count; i++)
             {
-                using MySqlCommand cmd = new MySqlCommand(sql, connection, transaction);
-                foreach (var data in param)
+                foreach (string sql in sqlQueries)
                 {
-                    cmd.Parameters.AddWithValue(data.Key, data.Value);
+                    using MySqlCommand cmd = new MySqlCommand(sql, connection, transaction);
+                    foreach (var data in paramList[i])
+                    {
+                        cmd.Parameters.AddWithValue(data.Key, data.Value);
+                    }
+                    await cmd.ExecuteNonQueryAsync();
                 }
-                await cmd.ExecuteNonQueryAsync();
             }
+
 
             await transaction.CommitAsync();
             return (int)MessageCode.Success;
@@ -185,14 +179,15 @@ public class Database
         string query = "SELECT * FROM item";
 
         var result = await Query(query, (int)DB.TableDB);
-        Item item = new Item();
         while (result.Read())
         {
+            Item item = new Item();
             item.Id = Convert.ToInt32(result["id"]);
             item.Name = Convert.ToString(result["name"]);
             item.Category = Convert.ToInt32(result["category"]);
             item.Gender = Convert.ToInt32(result["gender"]);
             item.ImgId = Convert.ToString(result["img_id"]);
+            Console.WriteLine($"Test::{item.Id}/{item.Name}");
 
             ItemTable[item.Id] = item;
         }
@@ -202,9 +197,9 @@ public class Database
         Console.WriteLine("ShopTable 캐싱 시작");
         query = "SELECT * FROM shop";
         result = await Query(query, (int)DB.TableDB);
-        ShopItem shopItem = new ShopItem();
         while (result.Read())
         {
+            ShopItem shopItem = new ShopItem();
             shopItem.Id = Convert.ToInt32(result["id"]);
             shopItem.Price = Convert.ToInt32(result["price"]);
             ShopTable[shopItem.Id] = shopItem;
@@ -212,20 +207,5 @@ public class Database
         result.Close();
         Console.WriteLine("ShopTable 캐싱 완료");
         Console.WriteLine("-----------------");
-
-
-        Console.WriteLine("Item");
-        foreach (var test in ItemTable.Values)
-        {
-            Console.WriteLine($"id: {test.Id} / name: {test.Name} / category: {test.Category} / gender: {test.Gender} / imgId: {test.ImgId}");
-        }
-        Console.WriteLine("-----------------");
-
     }
-}
-
-enum DB
-{
-    UserDB,
-    TableDB
 }

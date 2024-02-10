@@ -34,22 +34,30 @@ namespace QplayChatServer.server
                             string? userName = joinGame!.UserName;
 
                             var clients = ServerManager.GetInstance().Clients;
-                            Console.WriteLine($"ConnectClient Size: {clients.Count}");
+                            
+                            var connectUsers = "";
+                            if (clients.Count > 0)
+                            {
+                                foreach (var t in clients)
+                                {
+                                    connectUsers += $"[{t.Key}]";
+                                }
+                            } 
+                            else
+                            {
+                                connectUsers = "[없음]";
+                            }
+                            Console.WriteLine($"현재 접속중인 유저\n{connectUsers}");
+
                             if (!clients.ContainsKey(userName!))
                             {
-
                                 clients.TryAdd(userName!, client);
-                                Console.WriteLine($"Add ConnectClient!! Current Clients Size: {clients.Count}");
                             }
                             else
                             {
                                 clients[userName!] = client;
                             }
-
-                            foreach (var t in clients)
-                            {
-                                Console.WriteLine($"ConnectUsers:: UserName : {t.Key}");
-                            }
+                            
 
                             var packet = new ChatResponse.Packet();
                             packet!.MessageCode = (int)MessageCode.Success;
@@ -97,8 +105,8 @@ namespace QplayChatServer.server
             var result = new ConcurrentQueue<TcpClient>();
             var clients = ServerManager.GetInstance().Clients;
             var users = ServerManager.GetInstance().Users;
-
-            await Task.Run(() =>
+            var userNames = new List<string>();
+            await Task.Run(()=>
             {
                 switch (request.Opcode)
                 {
@@ -109,10 +117,11 @@ namespace QplayChatServer.server
                             foreach (var user in users)
                             {
                                 //-- 전달받을 유저의 클라이언트가 없을경우
-                                if (!clients.ContainsKey(user.Key)) continue;
+                                var currentUserName = user.Key;
+                                var currentUser = user.Value;
+                                if (!clients.ContainsKey(currentUserName)) continue;
 
-                                int userState = user.Value.State;
-                                string userName = user.Value.UserName!;
+                                int userState = currentUser.State;
                                 //-- 호출한 유저의 상태와 동일한 상태를 가진 유저인지?
                                 if (userState == chatUser.State)
                                 {
@@ -122,12 +131,13 @@ namespace QplayChatServer.server
                                             int roomNumber = user.Value.RoomNumber;
                                             if (roomNumber == chatUser.RoomNumber)
                                             {
-                                                result.Enqueue(clients[userName]);
+                                                result.Enqueue(clients[currentUserName]);
+                                                userNames.Add(currentUserName);
                                             }
                                             break;
-
                                         default:
-                                            result.Enqueue(clients[userName]);
+                                            result.Enqueue(clients[currentUserName]);
+                                            userNames.Add(currentUserName);
                                             break;
                                     }
                                 }
@@ -141,12 +151,14 @@ namespace QplayChatServer.server
                             foreach (var user in users)
                             {
                                 var currentUser = user.Value;
-
+                             
                                 //-- 전달받을 유저의 클라이언트가 없을경우
                                 if (!clients.ContainsKey(user.Key)) continue;
                                 if (user.Value.UserName == packet!.UserName) continue;
                                 if (user.Value.State != (int)UserState.Lobby) continue;
+                             
                                 result.Enqueue(clients[user.Value.UserName!]);
+                                userNames.Add(user.Value.UserName!);
                             }
                         }
                         break;
@@ -162,6 +174,8 @@ namespace QplayChatServer.server
                                 if (user.Value.UserName == packet!.UserName) continue;
                                 if (user.Value.State != (int)UserState.Lobby) continue;
                                 result.Enqueue(clients[user.Value.UserName!]);
+                                userNames.Add(user.Value.UserName!);                                
+
                             }
                         }
                         break;
@@ -177,6 +191,7 @@ namespace QplayChatServer.server
                                 if (user.Value.UserName == packet!.UserName) continue;
                                 if (user.Value.State != (int)UserState.Lobby) continue;
                                 result.Enqueue(clients[user.Value.UserName!]);
+                                userNames.Add(user.Value.UserName!);
                             }
                         }
                         break;
@@ -192,6 +207,7 @@ namespace QplayChatServer.server
                                 if (user.Value.UserName == packet!.UserName) continue;
                                 if (user.Value.State != (int)UserState.Lobby) continue;
                                 result.Enqueue(clients[user.Value.UserName!]);
+                                userNames.Add(user.Value.UserName!);
                             }
                         }
                         break;
@@ -208,6 +224,7 @@ namespace QplayChatServer.server
                                 if (currentUser.State == (int)UserState.Room && currentUser.RoomNumber == packet.RoomNumber)
                                 {
                                     result.Enqueue(clients[user.Value.UserName!]);
+                                    userNames.Add(user.Value.UserName!);
                                 }
                             }
                         }
@@ -223,14 +240,26 @@ namespace QplayChatServer.server
                                 if (user.Value.State == (int)UserState.Room && user.Value.RoomNumber == packet.RoomNumber)
                                 {
                                     result.Enqueue(clients[user.Value.UserName!]);
+                                    userNames.Add(user.Value.UserName!);
                                 }
                             }
                         }
                         break;
                 }
-
             });
-
+            string userNameList = "";
+            if (userNames.Count > 0)
+            {
+                foreach(var userName in userNames)
+                {
+                    userNameList += $"[{userName}]";
+                }
+            }
+            else
+            {
+                userNameList = "[없음]";
+            }
+            Console.WriteLine($"GetUserClients ::\n메시지 받을 유저 목록\n{userNameList}");
             return result;
         }
 

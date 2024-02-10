@@ -173,7 +173,7 @@ public class Database
     #endregion
     public async Task LoadTableDatabase()
     {
-        Console.WriteLine("-----------------");
+        Console.WriteLine("----------------------------------------------------------");
         Console.WriteLine("ItemTable 캐싱 시작");
 
         string query = "SELECT * FROM item";
@@ -192,7 +192,7 @@ public class Database
         }
         result.Close();
         Console.WriteLine("ItemTable 캐싱 완료");
-        Console.WriteLine("-----------------");
+        Console.WriteLine("----------------------------------------------------------");
         Console.WriteLine("ShopTable 캐싱 시작");
         query = "SELECT * FROM shop";
         result = await Query(query, (int)DB.TableDB);
@@ -205,6 +205,6 @@ public class Database
         }
         result.Close();
         Console.WriteLine("ShopTable 캐싱 완료");
-        Console.WriteLine("-----------------");
+        Console.WriteLine("----------------------------------------------------------");
     }
 }

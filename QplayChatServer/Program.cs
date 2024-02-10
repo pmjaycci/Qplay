@@ -12,7 +12,7 @@ class Program
         ServerManager.GetInstance().Token = cts.Token;
         //-- Database 연결
         var databse = Database.GetInstance();
-        Console.WriteLine("-----------------");
+        Console.WriteLine("----------------------------------------------------------");
         if ((int)MessageCode.Success != databse.DatabaseConnect((int)DB.TableDB)) return;
         if ((int)MessageCode.Success != databse.DatabaseConnect((int)DB.UserDB)) return;
 

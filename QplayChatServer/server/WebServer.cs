@@ -118,15 +118,15 @@ namespace QplayChatServer.server
                         break;
                 }
                 Console.WriteLine("----------------------------------------------------------");
-                Console.WriteLine($"ChatApiRequest:: Header::{headerString}\n{requestBody}");
-                Console.WriteLine("----------------------------------------------------------");
+                 Console.WriteLine($"ChatApiRequest:: Header::{headerString}");//{requestBody}");
                 switch (header)
                 {
                     //TODO JoinGame~ExitShop까지 로비에 있는 유저들에게 TCP로 메시지 호출해줘야함
                     case (int)RequestHeader.JoinGame:
                         {
                             var request = JsonConvert.DeserializeObject<ApiRequest.Packet>(requestBody);
-
+                            Console.WriteLine($"접속 유저명 : {request!.UserName}");
+                            Console.WriteLine("----------------------------------------------------------");
                             var response = await WebReadMessages.GetInstance().JoinGame(request!.UserName!);
                             responseJson = JsonConvert.SerializeObject(response);
                         }
@@ -184,7 +184,7 @@ namespace QplayChatServer.server
                         break;
                 }
             }
-            Console.WriteLine($"ChatApiResponse:: Header:{headerString}\n{responseJson}");
+            Console.WriteLine($"ChatApiResponse:: Header:{headerString}");//\n{responseJson}");
             Console.WriteLine("----------------------------------------------------------");
             return responseJson;
 

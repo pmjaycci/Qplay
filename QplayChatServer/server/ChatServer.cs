@@ -18,7 +18,7 @@ namespace QplayChatServer
             TcpListener tcpListener = new TcpListener(IPAddress.Any, 12345);
             tcpListener.Start();
             Console.WriteLine("Chat Tcp 서버 시작됨");
-            Console.WriteLine("-----------------");
+            Console.WriteLine("----------------------------------------------------------");
 
             try
             {
@@ -57,8 +57,6 @@ namespace QplayChatServer
         //-- 클라이언트 요청 메시지 비동기 처리
         private static async Task HandleTcpClientAsync(TcpClient client, CancellationToken cancellationToken)
         {
-            Console.WriteLine($"TCP 클라이언트 연결됨: {((IPEndPoint)client.Client.RemoteEndPoint!).Address}");
-
             try
             {
                 //-- 호출 들어온 유저의 스트림
@@ -71,9 +69,11 @@ namespace QplayChatServer
 
                     if (bytesRead > 0)
                     {
+                        var ip = $"{((IPEndPoint)client.Client.RemoteEndPoint!).Address}";
+                        var port = $"{((IPEndPoint)client.Client.RemoteEndPoint!).Port}";
+                        Console.WriteLine($"TCP 클라이언트 연결됨: {ip}:{port}");
 
                         string request = Encoding.UTF8.GetString(buffer, 0, bytesRead);
-                        Console.WriteLine($"TEST:: Request: {request}");
 
                         var packet = JsonConvert.DeserializeObject<ChatBase.Packet>(request);
 
@@ -129,13 +129,11 @@ namespace QplayChatServer
             {
                 // SemaphoreSlim의 WaitAsync를 사용하여 대기
                 var semaphore = ServerManager.GetInstance().ChatSemaphore;
-                Console.WriteLine("TEST:: 메시지 대기중");
+                Console.WriteLine("SendChatMessages:: 메시지 대기중");
                 await semaphore.WaitAsync();
                 var messages = ServerManager.GetInstance().ChatMessages;
                 if (!messages!.IsEmpty && messages.TryDequeue(out var message))
                 {
-                    var test = message.Message;
-                    Console.WriteLine($"TEST:: SendChatMessages:: {test}");
                     var clients = await ChatReadMessages.GetInstance().GetUserClients(message!);
                     await SendChatMessage(clients!, message);
                 }

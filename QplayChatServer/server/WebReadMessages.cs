@@ -143,7 +143,6 @@ namespace QplayChatServer.server
                     if (rooms[i].RoomName == null)
                     {
                         idx = i;
-                        Console.WriteLine($"TEST:생성 가능한 방번호 : {i}");
                         break;
                     }
                 }
@@ -157,12 +156,9 @@ namespace QplayChatServer.server
                 //-- 방 생성 가능시
                 else
                 {
-
-                    //var room = rooms[idx];
-                    Console.WriteLine($"TEST:: 방제목 {rooms[idx].RoomName}");
                     //-- 방 셋팅
                     rooms[idx].RoomName = roomName;
-                    Console.WriteLine($"TEST:: 변경된 방제목 {rooms[idx].RoomName}");
+                    Console.WriteLine($"CreateRoom:: 생성된 방 제목 {rooms[idx].RoomName} / 유저명:{userName}");
                     rooms[idx].OwnerName = userName;
                     rooms[idx].CurrentMember = 1;
 
@@ -174,20 +170,6 @@ namespace QplayChatServer.server
                     response.JoinRoomUsersInfo = new Dictionary<int, JoinRoomUserInfo>();
                     rooms[idx].JoinRoomUsersInfo![0] = roomUser;
                     response.JoinRoomUsersInfo[0] = roomUser;
-                    /*
-                    var nullUser = new JoinRoomUserInfo();
-                    nullUser!.UserName = null;
-                    nullUser.Gender = 0;
-                    nullUser.Model = 0;
-                    nullUser.EquipItems = new ConcurrentBag<int>();
-                    //-- 나머지 자리 슬롯 초기화
-
-                    for (int i = 1; i <= 5; i++)
-                    {
-                        rooms[idx].JoinRoomUsersInfo![i] = nullUser;
-                        response.JoinRoomUsersInfo[i] = nullUser;
-                    }
-                    */
 
                     //-- 유저 상태변경 셋팅
                     user.State = (int)UserState.Room;
@@ -209,7 +191,7 @@ namespace QplayChatServer.server
                 if (test.Value.RoomName == null) continue;
                 count++;
             }
-            Console.WriteLine($"생성된 방의 갯수: {count}");
+            Console.WriteLine($"CreateRoom:: 현재 생성된 방의 갯수: {count}");
 
             return response;
         }
@@ -560,6 +542,7 @@ namespace QplayChatServer.server
                 messages!.Enqueue(message);
                 ServerManager.GetInstance().ChatSemaphore.Release();
             });
+            
         }
 
         //-- 로비 유저들에게 생성된 방 정보 송신

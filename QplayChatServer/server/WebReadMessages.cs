@@ -292,15 +292,11 @@ namespace QplayChatServer.server
                                 info.Value.UserName = null;
                             }
 
-                            //-- 현재 방인원 체크후 0명이 될경우 방제거
-                            if (room.CurrentMember > 1)
+                            if (room.CurrentMember >= 1)
                             {
                                 room.CurrentMember--;
                             }
-                            else
-                            {
-                                room.RoomName = null;
-                            }
+
                             //-- 유저 상태 로비로 변경
                             user.State = (int)UserState.Lobby;
                             await RoomLobbyMember(userName, user.State, roomNumber, room.CurrentMember);
@@ -360,6 +356,7 @@ namespace QplayChatServer.server
                 //-- 생성된 방 정보 받기 (response에 데이터 삽입)
                 foreach (var roomInfo in roomsInfo)
                 {
+                    if (roomInfo.Value.CurrentMember <= 0) continue;
                     if (roomInfo.Value.RoomName == null) continue;
                     int createdRoomNumber = roomInfo.Key;
                     var createdRoomInfo = new CreatedRoomInfo();
@@ -542,7 +539,7 @@ namespace QplayChatServer.server
                 messages!.Enqueue(message);
                 ServerManager.GetInstance().ChatSemaphore.Release();
             });
-            
+
         }
 
         //-- 로비 유저들에게 생성된 방 정보 송신

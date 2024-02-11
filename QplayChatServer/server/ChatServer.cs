@@ -5,6 +5,7 @@ using System.Net.Sockets;
 using System.Text;
 using Newtonsoft.Json;
 using QplayChatServer.server;
+using ZstdNet;
 
 namespace QplayChatServer
 {
@@ -16,7 +17,7 @@ namespace QplayChatServer
             int port = 8080;
 
             // TcpListener 생성 및 시작
-            TcpListener tcpListener = new TcpListener(IPAddress.Any, port);
+            TcpListener tcpListener = new TcpListener(IPAddress.Parse(ip), port);
             tcpListener.Start();
             Console.WriteLine($"Chat Tcp 서버 시작됨 IP[{ip}] PORT[{port}]");
             Console.WriteLine("----------------------------------------------------------");
@@ -48,7 +49,7 @@ namespace QplayChatServer
                         break;
                     }
 
-                    await Task.Run(() => HandleTcpClientAsync(client, cancellationToken));
+                    _ = Task.Run(() => HandleTcpClientAsync(client, cancellationToken));
                 }
             }
             finally

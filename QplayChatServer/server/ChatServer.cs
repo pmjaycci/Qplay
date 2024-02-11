@@ -2,12 +2,9 @@ using System.Collections.Concurrent;
 using System.Formats.Asn1;
 using System.Net;
 using System.Net.Sockets;
-using System.Security.Principal;
 using System.Text;
 using Newtonsoft.Json;
-using Org.BouncyCastle.Asn1.Ocsp;
 using QplayChatServer.server;
-using ZstdNet;
 
 namespace QplayChatServer
 {
@@ -15,9 +12,13 @@ namespace QplayChatServer
     {
         public async Task RunTcpServer(CancellationToken cancellationToken)
         {
-            TcpListener tcpListener = new TcpListener(IPAddress.Any, 12345);
+            string ip = "0.0.0.0"; // 모든 네트워크 인터페이스에 바인딩
+            int port = 8080;
+
+            // TcpListener 생성 및 시작
+            TcpListener tcpListener = new TcpListener(IPAddress.Any, port);
             tcpListener.Start();
-            Console.WriteLine("Chat Tcp 서버 시작됨");
+            Console.WriteLine($"Chat Tcp 서버 시작됨 IP[{ip}] PORT[{port}]");
             Console.WriteLine("----------------------------------------------------------");
 
             try
@@ -45,7 +46,8 @@ namespace QplayChatServer
                 {
                     TcpClient client = await tcpListener.AcceptTcpClientAsync();
                     //-- 요청 클라이언트 메시지 비동기 처리
-                    await HandleTcpClientAsync(client, cancellationToken);
+                    await Task.Run(() => HandleTcpClientAsync(client, cancellationToken));
+                    //await HandleTcpClientAsync(client, cancellationToken);
                 }
             }
             finally
@@ -89,7 +91,7 @@ namespace QplayChatServer
             }
             finally
             {
-                Console.WriteLine($"TCP 클라이언트 연결 해제됨: {((IPEndPoint)client.Client.RemoteEndPoint).Address}");
+                Console.WriteLine($"TCP 클라이언트 연결 해제됨: {((IPEndPoint)client.Client.RemoteEndPoint!).Address}");
                 string? userName = "";
 
                 //-- 연결 종료로 인해 캐싱되어 있는 Client의 데이터 삭제

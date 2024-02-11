@@ -187,8 +187,6 @@ public class Database
             item.Category = Convert.ToInt32(result["category"]);
             item.Gender = Convert.ToInt32(result["gender"]);
             item.ImgId = Convert.ToString(result["img_id"]);
-            Console.WriteLine($"Test::{item.Id}/{item.Name}");
-
             ItemTable[item.Id] = item;
         }
         result.Close();

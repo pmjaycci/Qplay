@@ -11,15 +11,15 @@ public class Program
 
         // -- Swagger 추가 :: API문, 브라우징 서비스 추가 및 이용 목적
         builder.Services.AddEndpointsApiExplorer();
-        builder.Services.AddSwaggerGen();
+        //builder.Services.AddSwaggerGen();
 
         var app = builder.Build();
 
         // -- 개발환경에서만 실행
         if (app.Environment.IsDevelopment())
         {
-            app.UseSwagger();
-            app.UseSwaggerUI();
+            //app.UseSwagger();
+            //app.UseSwaggerUI();
         }
         // 전역적인 미들웨어 추가
         app.Use(async (context, next) =>
@@ -51,6 +51,6 @@ public class Program
         Database.GetInstance().DatabaseConnect((int)DB.TableDB);
         await Database.GetInstance().LoadTableDatabase();
 
-        app.Run("http://localhost:5000");
+        app.Run(); //"http://localhost:5000");
     }
 }

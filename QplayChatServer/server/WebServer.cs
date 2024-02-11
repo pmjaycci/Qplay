@@ -16,12 +16,14 @@ namespace QplayChatServer.server
     {
         public Task RunHttpServer(CancellationToken cancellationToken)
         {
+            var ip = "0.0.0.0";
+            var port = "81";
             var builder = WebApplication.CreateBuilder();
             builder.WebHost.ConfigureKestrel(options =>
             {
-                options.Listen(IPAddress.Any, 5001); // 포트 번호는 필요에 따라 변경 가능
+                //options.Listen(IPAddress.Any, 81); // 포트 번호는 필요에 따라 변경 가능
+                builder.WebHost.UseUrls($"http://{ip}:{port}");
             });
-
             builder.Host.ConfigureLogging(logging =>
             {
                 // 모든 로깅 프로바이더 지우기
@@ -50,7 +52,7 @@ namespace QplayChatServer.server
                 app.UseSwaggerUI();
 
             }
-            Console.WriteLine("Chat Api 서버 시작됨");
+            Console.WriteLine($"Chat Api 서버 시작됨 IP[{ip}] PORT[{port}]");
             // Task 반환 추가
             return app.RunAsync(cancellationToken);
 
@@ -118,7 +120,7 @@ namespace QplayChatServer.server
                         break;
                 }
                 Console.WriteLine("----------------------------------------------------------");
-                 Console.WriteLine($"ChatApiRequest:: Header::{headerString}");//{requestBody}");
+                Console.WriteLine($"ChatApiRequest:: Header::{headerString}");//{requestBody}");
                 switch (header)
                 {
                     //TODO JoinGame~ExitShop까지 로비에 있는 유저들에게 TCP로 메시지 호출해줘야함

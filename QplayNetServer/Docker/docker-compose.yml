@@ -1,0 +1,10 @@
+version: '3.8'
+services:
+  qplay_login_server:
+    container_name: qplay_login_server
+    image: qplay_login:latest
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "80:80"

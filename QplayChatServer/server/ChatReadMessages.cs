@@ -19,6 +19,7 @@ namespace QplayChatServer.server
                 instance = new ChatReadMessages();
             }
             return instance;
+
         }
         #endregion
         //-- 클라이언트 메시지 응답 처리

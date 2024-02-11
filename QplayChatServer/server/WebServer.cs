@@ -14,9 +14,9 @@ namespace QplayChatServer.server
 {
     public class WebServer
     {
-        public Task RunHttpServer(CancellationToken cancellationToken)
+        public async Task RunHttpServer(CancellationToken cancellationToken)
         {
-            var ip = "0.0.0.0";
+            var ip = IPAddress.Any;//"0.0.0.0";
             var port = "81";
             var builder = WebApplication.CreateBuilder();
             builder.WebHost.ConfigureKestrel(options =>
@@ -54,8 +54,8 @@ namespace QplayChatServer.server
             }
             Console.WriteLine($"Chat Api 서버 시작됨 IP[{ip}] PORT[{port}]");
             // Task 반환 추가
-            return app.RunAsync(cancellationToken);
-
+            await app.RunAsync(cancellationToken);
+            Console.WriteLine("Chat Api 서버 종료됨");
         }
 
         // ConfigureSwagger 메서드 추가

@@ -21,20 +21,13 @@ namespace QplayChatServer
             Console.WriteLine($"Chat Tcp 서버 시작됨 IP[{ip}] PORT[{port}]");
             Console.WriteLine("----------------------------------------------------------");
 
-            try
-            {
-                //-- 클라이언트로부터 들어온 메세지 처리
-                var listenChatMessages = ListenChatMessages(tcpListener, cancellationToken);
-                //-- 보내야될 메세지들을 처리
-                var sendChatMessage = SendChatMessages();
+            //-- 클라이언트로부터 들어온 메세지 처리
+            var listenChatMessages = ListenChatMessages(tcpListener, cancellationToken);
+            //-- 보내야될 메세지들을 처리
+            var sendChatMessage = SendChatMessages(cancellationToken);
 
-                await Task.WhenAll(listenChatMessages, sendChatMessage);
-            }
-            finally
-            {
-                tcpListener.Stop();
-                Console.WriteLine("Chat Tcp 서버 종료됨");
-            }
+            await Task.WhenAll(listenChatMessages, sendChatMessage);
+
         }
 
         //-- 채팅서버 클라이언트 요청 대기
@@ -42,12 +35,20 @@ namespace QplayChatServer
         {
             try
             {
-                while (true)
+                while (!cancellationToken.IsCancellationRequested)
                 {
-                    TcpClient client = await tcpListener.AcceptTcpClientAsync();
-                    //-- 요청 클라이언트 메시지 비동기 처리
+                    TcpClient client;
+                    try
+                    {
+                        client = await tcpListener.AcceptTcpClientAsync();
+                    }
+                    catch (ObjectDisposedException)
+                    {
+                        // AcceptTcpClientAsync()이 Dispose 된 경우에 대한 처리
+                        break;
+                    }
+
                     await Task.Run(() => HandleTcpClientAsync(client, cancellationToken));
-                    //await HandleTcpClientAsync(client, cancellationToken);
                 }
             }
             finally
@@ -64,7 +65,7 @@ namespace QplayChatServer
                 //-- 호출 들어온 유저의 스트림
                 NetworkStream stream = client.GetStream();
                 byte[] buffer = new byte[1024];
-                while (true)
+                while (!cancellationToken.IsCancellationRequested)
                 {
                     //-- 유저 메시지 읽기
                     int bytesRead = await stream.ReadAsync(buffer, 0, buffer.Length, cancellationToken);
@@ -125,9 +126,9 @@ namespace QplayChatServer
         }
 
 
-        private async Task SendChatMessages()
+        private async Task SendChatMessages(CancellationToken cancellationToken)
         {
-            while (true)
+            while (!cancellationToken.IsCancellationRequested)
             {
                 // SemaphoreSlim의 WaitAsync를 사용하여 대기
                 var semaphore = ServerManager.GetInstance().ChatSemaphore;
@@ -163,6 +164,7 @@ namespace QplayChatServer
                     Console.WriteLine($"예외 발생: {ex.Message}");
                 }
             }
+
         }
 
 

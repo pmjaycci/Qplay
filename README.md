@@ -28,11 +28,13 @@ Qplay Project
 * C# ASP.Net Core API (HTTP)통신 및 TCP 소켓 통신 모두 Task를 활용하여 비동기로 동작합니다.
 * TCP 소켓 통신은 연결된 클라이언트의 Opcode값을 비교하여 연산처리를 진행합니다.
 * 요청 들어온 Opcode의 값이 JoinGame일 경우 해당 유저의 TcpClient는 Dictionary에 캐싱하여 관리합니다.
-* 
-* HTTP 통신은 Header값에 따라 어떤 호출인지 체크하여 결과 값을 응답 처리해줍니다.
-
+* 클라이언트로부터 들어온 메시지는 Queue에 담아 메시지를 처리하며<br/>
+Dictionary에 캐싱된 TcpClient중 전달받을 유저들을 탐색후 그에 맞는 메시지를 보내게 됩니다.
+* HTTP 통신은 Header값에 따라 어떤 호출인지 체크하며 유저의 상태 변경과 같이<br/>
+상황에 따라 요청자 이외의 유저들에게도 보내야 하는경우 Dictionary에서 메시지를 보낼 유저를 탐색후 메시지를 보내게 됩니다.
+---
 DB 서버
-  
+---
 * C# ASP.Net Core API (HTTP)
 - 로그인 서버와 채팅서버에 모두 사용 되었습니다.
 * TCP Socket

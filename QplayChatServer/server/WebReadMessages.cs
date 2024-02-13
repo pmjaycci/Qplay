@@ -1,8 +1,8 @@
 using System.Collections.Concurrent;
-using GameInfo;
 using Newtonsoft.Json;
-using Org.BouncyCastle.Utilities.IO;
 using Util;
+using GameInfo;
+using ZstdNet;
 
 namespace QplayChatServer.server
 {
@@ -10,7 +10,7 @@ namespace QplayChatServer.server
     {
         #region Singleton
         private static WebReadMessages? instance;
-        //private WebReadMessages() { }
+        private WebReadMessages() { }
         public static WebReadMessages GetInstance()
         {
             if (instance == null)
@@ -31,92 +31,123 @@ namespace QplayChatServer.server
         public async Task<ApiResponse.JoinGame> JoinGame(string userName)
         {
             var response = new ApiResponse.JoinGame();
-            response!.UserName = userName;
-            response.State = (int)UserState.Lobby;
-            response.RoomNumber = 0;
-            response.Items = new Dictionary<int, bool>();
-
-            UserInfo userInfo = new UserInfo();
-            userInfo!.UserName = userName;
-            userInfo.State = (int)UserState.Lobby;
-            userInfo.RoomNumber = 0;
-            userInfo.Items = new ConcurrentDictionary<int, bool>();
-
-            int itemId;
-            bool isEquip;
-
-            var sql = $"SELECT gender, model, money, inventory.item_id, inventory.is_equip FROM account LEFT JOIN inventory ON account.uuid = inventory.uuid WHERE account.uuid = @uuid";
-            var param = new Dictionary<string, object?>();
-            param["@uuid"] = userName;
-
-            using (var result = await Database.GetInstance().Query(sql, param, (int)DB.UserDB))
+            var serverManager = ServerManager.GetInstance();
+            var users = serverManager.Users;
+            if (!users.ContainsKey(userName))
             {
-                while (result.Read())
+                User user = new User();
+                user!.UserName = userName;
+                user.State = (int)UserState.Lobby;
+                user.RoomNumber = -1;
+                user.SlotNumber = -1;
+                user.Items = new ConcurrentDictionary<int, bool>();
+
+                response.State = (int)UserState.Lobby;
+                response.RoomNumber = user.RoomNumber;
+                response.SlotNumber = user.SlotNumber;
+                response.UserName = user!.UserName;
+                response.Items = new Dictionary<int, bool>();
+
+                var sql = $"SELECT gender, model, money, inventory.item_id, inventory.is_equip FROM account LEFT JOIN inventory ON account.uuid = inventory.uuid WHERE account.uuid = @uuid";
+                var param = new Dictionary<string, object?>();
+                param["@uuid"] = userName;
+
+                int itemId;
+                bool isEquip;
+
+                using (var result = await Database.GetInstance().Query(sql, param, (int)DB.UserDB))
                 {
-                    userInfo.Gender = Convert.ToInt32(result["gender"]);
-                    userInfo.Money = Convert.ToInt32(result["money"]);
-                    userInfo.Model = Convert.ToInt32(result["model"]);
-                    response.Gender = userInfo.Gender;
-                    response.Model = userInfo.Model;
-                    response.Money = userInfo.Money;
-                    bool isItemNull = result.IsDBNull(result.GetOrdinal("item_id"));
-                    if (!isItemNull)
+                    while (result.Read())
                     {
-                        itemId = Convert.ToInt32(result["item_id"]);
-                        isEquip = Convert.ToBoolean(result["is_equip"]);
-                        userInfo.Items[itemId] = isEquip;
-                        response.Items![itemId] = isEquip;
+                        user.Gender = Convert.ToInt32(result["gender"]);
+                        user.Money = Convert.ToInt32(result["money"]);
+                        user.Model = Convert.ToInt32(result["model"]);
+                        response.Gender = user.Gender;
+                        response.Model = user.Model;
+                        response.Money = user.Money;
+                        bool isItemNull = result.IsDBNull(result.GetOrdinal("item_id"));
+                        if (!isItemNull)
+                        {
+                            itemId = Convert.ToInt32(result["item_id"]);
+                            isEquip = Convert.ToBoolean(result["is_equip"]);
+                            user.Items[itemId] = isEquip;
+                            response.Items![itemId] = isEquip;
+                        }
                     }
+
+                }
+                if (users.TryAdd(userName, user))
+                {
+                    Console.WriteLine($"유저 생성함 : {userName}");
+                }
+                else
+                {
+                    Console.WriteLine($"유저 생성 실패 : {userName}");
                 }
 
+
+            }
+            else
+            {
+                var userInfo = users[userName];
+                response!.State = (int)UserState.Lobby;
+                response.RoomNumber = -1;
+                response.SlotNumber = -1;
+                response.UserName = userInfo.UserName;
+                response.Gender = userInfo.Gender;
+                response.Model = userInfo.Model;
+                response.Money = userInfo.Money;
+                response.Items = new Dictionary<int, bool>();
+                foreach (var item in userInfo.Items!)
+                {
+                    response.Items[item.Key] = item.Value;
+                }
             }
 
-
-            //-- 게임 접속 유저 리스트 받기 (response에 데이터 삽입)
-            var usersInfo = ServerManager.GetInstance().Users;
-            usersInfo[userName] = userInfo;
-            var user = usersInfo[userName];
-            var roomsInfo = ServerManager.GetInstance().JoinRooms;
-
-
-            response!.CreatedRoomsInfo = new Dictionary<int, CreatedRoomInfo>();
-            response.LobbyUsersInfo = new List<LobbyUserInfo>();
-
-            foreach (var info in usersInfo)
+            response!.Rooms = new Dictionary<int, Room>();
+            var rooms = serverManager.Rooms;
+            //-- 생성된 방 정보 받기
+            foreach (var roomInfo in rooms)
             {
-                var lobbyUserInfo = new LobbyUserInfo();
-                lobbyUserInfo!.UserName = info.Value.UserName;
-                lobbyUserInfo.State = info.Value.State;
-                lobbyUserInfo.RoomNumber = info.Value.RoomNumber;
-
-                response.LobbyUsersInfo.Add(lobbyUserInfo);
-            }
-            //-- 생성된 방 정보 받기 (response에 데이터 삽입)
-            foreach (var roomInfo in roomsInfo)
-            {
-                if (roomInfo.Value.RoomName == null) continue;
+                var room = roomInfo.Value;
+                if (room.CurrentMember <= 0) continue; //-- 현재인원이 0명이하일 경우 건너뛰기
 
                 int createdRoomNumber = roomInfo.Key;
-                var createdRoomInfo = new CreatedRoomInfo();
+                var createdRoomInfo = new Room();
                 createdRoomInfo!.RoomNumber = createdRoomNumber;
                 createdRoomInfo.CurrentMember = roomInfo.Value.CurrentMember;
                 createdRoomInfo.RoomName = roomInfo.Value.RoomName;
                 createdRoomInfo.OwnerName = roomInfo.Value.OwnerName;
-                createdRoomInfo.RoomUsersInfo = new List<string>();
-                foreach (var roomUserInfo in roomInfo.Value.JoinRoomUsersInfo!)
-                {
-                    var roomUserName = roomUserInfo.Value.UserName;
-                    createdRoomInfo.RoomUsersInfo.Add(roomUserName!);
-                }
-                response.CreatedRoomsInfo[roomInfo.Key] = createdRoomInfo;
+
+                response.Rooms[roomInfo.Key] = createdRoomInfo;
             }
+
+            //-- 접속중인 유저들 정보 받기
+            response.LoginUsers = new List<LoginUser>();
+
+            foreach (var info in users)
+            {
+                var user = info.Value;
+                var loginUser = new LoginUser();
+                loginUser!.UserName = user.UserName;
+                loginUser.State = user.State;
+                loginUser.RoomNumber = user.RoomNumber;
+
+                response.LoginUsers.Add(loginUser);
+            }
+
 
             response.MessageCode = (int)MessageCode.Success;
             response.Message = "Success";
+            var joinUser = users[userName];
 
-            await AddUserLobbyMember(user);
+            _ = Task.Run(() => AddUserLobbyMember(joinUser));
+
+            var test = JsonConvert.SerializeObject(response);
+            Console.WriteLine(test);
             return response;
         }
+        //-- 로비 유저들에게 접속한 유저 정보 전송
 
         /* 방 생성하기 구조 
         미리 생성된 채팅방 목록중 RoomName 값이 null값인 채팅방 탐색후
@@ -126,64 +157,76 @@ namespace QplayChatServer.server
         - [해당 유저 닉네임, 상태(채팅방), 방 번호] 로비 유저 클라이언트에 전송 1
         - [해당 방 정보 (방 번호, 제목, 인원수, 방 인원 닉네임)] 로비 유저 클라이언트에 전송 2
         */
-        public async Task<ApiResponse.Room> CreateRoom(string roomName, string userName)
+        public async Task<ApiResponse.CreateRoom> CreateRoom(string roomName, string userName)
         {
-            var response = new ApiResponse.Room();
+            var response = new ApiResponse.CreateRoom();
             var serverManager = ServerManager.GetInstance();
+            var users = serverManager.Users;
+
+            if (!users.ContainsKey(userName))
+            {
+                var message = $"WebReadMessages.CreateRoom Error!! {userName} KeyNotFound";
+                response.MessageCode = (int)MessageCode.Fail;
+                response.Message = message;
+                Console.WriteLine(message);
+                return response;
+            }
+
             var user = serverManager.Users[userName];
-            var rooms = serverManager.JoinRooms;
+            var rooms = serverManager.Rooms;
+            //-- 유저 캐릭터 정보 가져오기
+
+
+            int idx = -1;
+            //-- 생성 가능한 방이 있는지 체크
+            for (int i = 0; i < rooms.Count; i++)
+            {
+                if (rooms[i].CurrentMember == 0)
+                {
+                    idx = i;
+                    Console.WriteLine($"생성 가능 방번호 {i}");
+
+                    break;
+                }
+            }
+
+            //-- 이미 최대 방 갯수 초과시
+            if (idx == -1)
+            {
+                response.MessageCode = (int)MessageCode.Fail;
+                response.Message = "생성 가능한 방이 없습니다.";
+                Console.WriteLine(response.Message);
+                return response;
+            }
+
             await Task.Run(() =>
             {
-                //-- 유저정보 가져오기
-                var roomUser = serverManager.GetRoomUserInfo(userName);
-                int idx = -1;
-                //-- 생성 가능한 방이 있는지 체크
-                for (int i = 0; i < rooms.Count; i++)
-                {
-                    if (rooms[i].RoomName == null)
-                    {
-                        idx = i;
-                        break;
-                    }
-                }
+                //var roomUser = serverManager.GetRoomUserInfo(userName);
 
-                //-- 이미 최대 방 갯수 초과시
-                if (idx == -1)
-                {
-                    response.Message = "생성 가능한 방이 없습니다.";
-                    response.MessageCode = (int)MessageCode.Fail;
-                }
-                //-- 방 생성 가능시
-                else
-                {
-                    //-- 방 셋팅
-                    rooms[idx].RoomName = roomName;
-                    Console.WriteLine($"CreateRoom:: 생성된 방 제목 {rooms[idx].RoomName} / 유저명:{userName}");
-                    rooms[idx].OwnerName = userName;
-                    rooms[idx].CurrentMember = 1;
+                var room = rooms[idx];
+                //-- 방 셋팅
+                room.RoomNumber = idx;
+                room.CurrentMember = 1;
+                room.RoomName = roomName;
+                room.OwnerName = userName;
 
-                    response.RoomName = roomName;
-                    response.OwnerName = userName;
-                    response.CurrentMember = 1;
+                //-- 유저 상태변경 셋팅
+                user.State = (int)UserState.Room;
+                user.RoomNumber = idx;
+                user.SlotNumber = 0;
 
-                    //-- 자리 슬롯 셋팅
-                    response.JoinRoomUsersInfo = new Dictionary<int, JoinRoomUserInfo>();
-                    rooms[idx].JoinRoomUsersInfo![0] = roomUser;
-                    response.JoinRoomUsersInfo[0] = roomUser;
+                response.State = user.State;
+                response.RoomNumber = user.RoomNumber;
+                response.SlotNumber = user.SlotNumber;
+                response.CurrentMember = room.CurrentMember;
+                response.RoomName = room.RoomName;
+                response.OwnerName = response.OwnerName;
 
-                    //-- 유저 상태변경 셋팅
-                    user.State = (int)UserState.Room;
-                    user.RoomNumber = idx;
-
-
-                    response.State = (int)UserState.Room;
-                    response.RoomNumber = idx;
-                    response.Message = "Success";
-                    response.MessageCode = (int)MessageCode.Success;
-                }
-
+                response.Message = "Success";
+                response.MessageCode = (int)MessageCode.Success;
             });
-            await AddChatRoomLobbyMember(user);
+
+            _ = Task.Run(() => AddChatRoomLobbyMember(user));
 
             int count = 0;
             foreach (var test in rooms)
@@ -191,10 +234,12 @@ namespace QplayChatServer.server
                 if (test.Value.RoomName == null) continue;
                 count++;
             }
-            Console.WriteLine($"CreateRoom:: 현재 생성된 방의 갯수: {count}");
+            Console.WriteLine($"CreatedRoom:: 현재 생성된 방의 갯수: {count}");
 
             return response;
         }
+        //-- 로비 유저들에게 생성된 방 정보 송신
+
 
         /* 방 입장하기 구조
         ==
@@ -202,200 +247,204 @@ namespace QplayChatServer.server
         - [해당 방 정보 (방 번호, 인원수, 방 인원 닉네임)] 로비 유저 클라이언트에 전송 3
         - [해당 유저 정보 (닉네임, 의상), 자리 슬롯 번호] 접속하는 채팅방 유저 클라이언트에 전송 4
         */
-        public async Task<ApiResponse.Room> JoinRoom(int roomNumber, string userName)
+        public async Task<ApiResponse.JoinRoom> JoinRoom(int roomNumber, string userName)
         {
-            var response = new ApiResponse.Room();
-            int slotNumber = 0;
-
-            await Task.Run(async () =>
+            var response = new ApiResponse.JoinRoom();
+            var serverManager = ServerManager.GetInstance();
+            var users = serverManager.Users;
+            if (!users.ContainsKey(userName))
             {
-                var serverManager = ServerManager.GetInstance();
-                var roomInfo = serverManager.JoinRooms[roomNumber];
+                var message = $"WebReadMessages.JoinRoom Error!! {userName} KeyNotFound";
+                response.MessageCode = (int)MessageCode.Fail;
+                response.Message = message;
+                Console.WriteLine(message);
+                return response;
+            }
+            var user = serverManager.Users[userName];
 
-                //-- 인원 초과
-                if (roomInfo.CurrentMember == 6)
+            var room = serverManager.Rooms[roomNumber];
+            //-- 인원 초과
+            if (room.CurrentMember >= 6)
+            {
+                response.Message = "방이 가득차서 입장할 수 없습니다.";
+                response.MessageCode = (int)MessageCode.Fail;
+                return response;
+            }
+
+            await Task.Run(() =>
+            {
+                room.CurrentMember += 1;
+                user.State = (int)UserState.Room;
+                user.RoomNumber = room.RoomNumber;
+
+                int slot = 0;
+                //-- 채팅방 빈자리 슬롯 찾기
+                foreach (var info in users)
                 {
-                    response.Message = "방이 가득차서 입장할 수 없습니다.";
-                    response.MessageCode = (int)MessageCode.Fail;
+                    var userInfo = info.Value;
+                    if (userInfo.State != (int)UserState.Room) continue;
+                    if (userInfo.RoomNumber != user.RoomNumber) continue;
+                    if (userInfo.SlotNumber == slot) slot++;
                 }
-                else
+                user.SlotNumber = slot;
+
+                response.State = user.State;
+                response.RoomNumber = user.RoomNumber;
+                response.SlotNumber = user.SlotNumber;
+                response.CurrentMember = room.CurrentMember;
+                response.RoomName = room.RoomName;
+                response.OwnerName = room.OwnerName;
+                response.Characters = new List<Character>();
+                foreach (var roomUserInfo in users)
                 {
-                    serverManager.JoinRooms[roomNumber].CurrentMember++;
-                    //-- 방정보에 삽입할 유저정보 가져오기
-                    var roomUserInfo = serverManager.GetRoomUserInfo(userName);
-                    var user = serverManager.Users[userName];
+                    var roomUser = roomUserInfo.Value;
+                    if (roomUser.State != (int)UserState.Room) continue;
+                    if (roomUser.RoomNumber != user.RoomNumber) continue;
 
-                    //-- 입장하려는 방에 빈자리 탐색후 해당유저 정보 설정
-                    foreach (var userInfo in roomInfo.JoinRoomUsersInfo!)
-                    {
-                        var userName = userInfo.Value.UserName;
-                        if (userName != null) continue;
-                        slotNumber = userInfo.Key;
-                        //-- 해당 방에 유저정보 셋팅
-                        roomInfo.JoinRoomUsersInfo![slotNumber] = roomUserInfo;
-                        user.State = (int)UserState.Room;
-                        user.RoomNumber = roomNumber;
+                    var character = serverManager.GetCharacter(roomUser.UserName!);
 
-
-                        //-- 해당 방정보 response에 데이터 삽입
-                        response.Message = "Success";
-                        response.MessageCode = (int)MessageCode.Success;
-
-                        response.State = (int)UserState.Room;
-                        response.CurrentMember = roomInfo.CurrentMember;
-                        response.RoomName = roomInfo.RoomName;
-                        response.OwnerName = roomInfo.OwnerName;
-                        response.JoinRoomUsersInfo = new Dictionary<int, JoinRoomUserInfo>();
-                        var roomUsersInfo = roomInfo.JoinRoomUsersInfo;
-                        foreach (var info in roomUsersInfo!)
-                        {
-                            var nullUser = info.Value;
-                            if (nullUser.UserName == null) continue;
-                            response.JoinRoomUsersInfo[info.Key] = info.Value;
-                        }
-
-                        break;
-                    }
-                    //-- 방에 입장한 유저들에게 메시지 송신
-                    await JoinRoomMember(user, roomInfo, roomNumber, slotNumber);
-
-                    //-- 로비 유저들에게 유저 상태 송신
-                    await RoomLobbyMember(userName, (int)UserState.Room, roomNumber, roomInfo.CurrentMember);
-
+                    response.Characters.Add(character);
                 }
             });
+            var character = serverManager.GetCharacter(userName);
+            //-- 방에 입장한 유저들에게 메시지 송신
+            _ = Task.Run(() => JoinRoomMember(room.CurrentMember, character));
 
+            //-- 로비 유저들에게 유저 상태 송신
+            _ = Task.Run(() => RoomLobbyMember(user.UserName!, user.State, user.RoomNumber, room.CurrentMember));
+            response.Message = "Success";
+            response.MessageCode = (int)MessageCode.Success;
             return response;
         }
-        public async Task<ApiResponse.ExitRoom> ExitRoom(string userName)
+
+        //TODO: 로그아웃관련 처리해야함 (채팅방 내에서 로그아웃 또는 로비에서 로그아웃 )
+        public async Task<ApiResponse.ExitRoom> ExitRoom(string userName, int opcode = 0)
         {
             var response = new ApiResponse.ExitRoom();
-            response!.CreatedRoomsInfo = new Dictionary<int, CreatedRoomInfo>();
-            response.LobbyUsersInfo = new List<LobbyUserInfo>();
-            await Task.Run(async () =>
+            var serverManager = ServerManager.GetInstance();
+            var users = serverManager.Users;
+            if (!users.ContainsKey(userName))
             {
-                var user = ServerManager.GetInstance().Users[userName];
-                int state = user.State;
-                //-- 현재 유저의 위치에 따른 처리
+                var message = $"WebReadMessages.ExitRoom Error!! {userName} KeyNotFound";
+                response.MessageCode = (int)MessageCode.Fail;
+                response.Message = message;
+                Console.WriteLine(message);
+                return response;
+            }
+
+            var user = users[userName];
+            int state = user.State;
+
+            if (opcode == (int)Opcode.Logout)
+            {
+                int roomNumber = user.RoomNumber;
+                int slotNumber = user.SlotNumber;
+
+                if (state == (int)UserState.Room)
+                {
+                    var room = serverManager.Rooms[roomNumber];
+                    room.CurrentMember--;
+                    if (room.CurrentMember <= 0)
+                    {
+                        room.RoomName = "";
+                        room.OwnerName = "";
+                    }
+                    _ = Task.Run(() => ExitRoomMember(roomNumber, slotNumber, user.UserName!, room.CurrentMember));
+                }
+                int logOut = (int)UserState.Logout;
+                _ = Task.Run(() => LobbyMember(userName, logOut));
+
+                users.TryRemove(userName, out _);
+                response.Message = "Success";
+                response.MessageCode = (int)MessageCode.Success;
+
+                return response;
+            }
+            await Task.Run(() =>
+            {
+
                 switch (state)
                 {
                     case (int)UserState.Room:
                         {
-                            int roomNumber = ServerManager.GetInstance().Users[userName].RoomNumber;
-                            var room = ServerManager.GetInstance().JoinRooms[roomNumber];
-                            int slotNumber = 0;
-                            //-- 퇴장하는 방에서 해당 유저정보 제거
-                            foreach (var info in room.JoinRoomUsersInfo!)
+                            int roomNumber = user.RoomNumber;
+                            int slotNumber = user.SlotNumber;
+                            var room = serverManager.Rooms[roomNumber];
+                            room.CurrentMember--;
+                            if (room.CurrentMember <= 0)
                             {
-                                if (info.Value.UserName != userName) continue;
-                                slotNumber = info.Key;
-                                info.Value.UserName = null;
+                                room.RoomName = "";
+                                room.OwnerName = "";
                             }
-
-                            if (room.CurrentMember >= 1)
-                            {
-                                room.CurrentMember--;
-                            }
-
-                            //-- 유저 상태 로비로 변경
                             user.State = (int)UserState.Lobby;
-                            await RoomLobbyMember(userName, user.State, roomNumber, room.CurrentMember);
-                            await ExitRoomMember(roomNumber, slotNumber);
-                        }
+                            user.RoomNumber = -1;
+                            user.SlotNumber = -1;
 
-                        break;
-                    case (int)UserState.Logout:
-                        {
-                            int roomNumber = ServerManager.GetInstance().Users[userName].RoomNumber;
-                            var room = ServerManager.GetInstance().JoinRooms[roomNumber];
-                            int slotNumber = 0;
-                            //-- 퇴장하는 방에서 해당 유저정보 제거
-                            foreach (var info in room.JoinRoomUsersInfo!)
-                            {
-                                if (info.Value.UserName != userName) continue;
-                                slotNumber = info.Key;
-                                info.Value.UserName = null;
-                            }
-
-                            //-- 현재 방인원 체크후 0명이 될경우 방제거
-                            if (room.CurrentMember > 1)
-                            {
-                                room.CurrentMember--;
-                            }
-                            else
-                            {
-                                room.RoomName = null;
-                            }
-                            //-- 유저 상태 로비로 변경
-                            user.State = (int)UserState.Lobby;
-                            await RoomLobbyMember(userName, user.State, roomNumber, room.CurrentMember);
-                            await ExitRoomMember(roomNumber, slotNumber);
+                            _ = Task.Run(() => RoomLobbyMember(userName, user.State, roomNumber, room.CurrentMember));
+                            _ = Task.Run(() => ExitRoomMember(roomNumber, slotNumber, user.UserName!, room.CurrentMember));
                         }
                         break;
-
                     default:
-                        //-- 유저 상태 로비로 변경
-                        user.State = (int)UserState.Lobby;
-                        await LobbyMember(userName, user.State);
+                        {
+                            //-- 유저 상태 로비로 변경
+                            user.State = (int)UserState.Lobby;
+                            user.RoomNumber = -1;
+                            user.SlotNumber = -1;
+                            _ = Task.Run(() => LobbyMember(user.UserName!, user.State));
+                        }
                         break;
-                }
 
-
-                //-- 게임 접속 유저 리스트 받기 (response에 데이터 삽입)
-                var usersInfo = ServerManager.GetInstance().Users;
-                var roomsInfo = ServerManager.GetInstance().JoinRooms;
-                foreach (var userInfo in usersInfo)
-                {
-                    var lobbyUserInfo = new LobbyUserInfo();
-                    lobbyUserInfo!.UserName = userInfo.Value.UserName;
-                    lobbyUserInfo.State = userInfo.Value.State;
-                    lobbyUserInfo.RoomNumber = userInfo.Value.RoomNumber;
-
-                    response.LobbyUsersInfo.Add(lobbyUserInfo);
-                }
-                //-- 생성된 방 정보 받기 (response에 데이터 삽입)
-                foreach (var roomInfo in roomsInfo)
-                {
-                    if (roomInfo.Value.CurrentMember <= 0) continue;
-                    if (roomInfo.Value.RoomName == null) continue;
-                    int createdRoomNumber = roomInfo.Key;
-                    var createdRoomInfo = new CreatedRoomInfo();
-                    createdRoomInfo!.RoomNumber = createdRoomNumber;
-                    createdRoomInfo.CurrentMember = roomInfo.Value.CurrentMember;
-                    createdRoomInfo.RoomName = roomInfo.Value.RoomName;
-                    createdRoomInfo.OwnerName = roomInfo.Value.OwnerName;
-                    createdRoomInfo.RoomUsersInfo = new List<string>();
-                    foreach (var roomUserInfo in roomInfo.Value.JoinRoomUsersInfo!)
-                    {
-                        var roomUserName = roomUserInfo.Value.UserName;
-                        createdRoomInfo.RoomUsersInfo.Add(roomUserName!);
-                    }
-                    response.CreatedRoomsInfo[roomInfo.Key] = createdRoomInfo;
                 }
             });
 
-            response.MessageCode = (int)MessageCode.Success;
+            var rooms = serverManager.Rooms;
+            response.Rooms = new Dictionary<int, Room>();
+            foreach (var roomInfo in rooms)
+            {
+                var room = roomInfo.Value;
+                if (room.CurrentMember <= 0) continue;
+                response.Rooms![room.RoomNumber] = room;
+            }
+
+            response.LoginUsers = new List<LoginUser>();
+            foreach (var loginUserInfo in users)
+            {
+                var info = loginUserInfo.Value;
+                var loginUser = new LoginUser();
+                loginUser!.State = info.State;
+                loginUser.RoomNumber = info.RoomNumber;
+                loginUser.UserName = info.UserName;
+                response.LoginUsers!.Add(loginUser);
+            }
             response.Message = "Success";
-            response.State = (int)UserState.Lobby;
-
-
+            response.MessageCode = (int)MessageCode.Success;
             return response;
         }
 
         public async Task<ApiResponse.SceneChange> SceneChange(string userName, int state)
         {
             var response = new ApiResponse.SceneChange();
-            await Task.Run(async () =>
+            var serverManager = ServerManager.GetInstance();
+            var users = serverManager.Users;
+            if (!users.ContainsKey(userName))
             {
-                var user = ServerManager.GetInstance().Users[userName];
-                //-- 유저 상태  변경
+                var message = $"WebReadMessages.SceneChange Error!! {userName} KeyNotFound";
+                response.MessageCode = (int)MessageCode.Fail;
+                response.Message = message;
+                Console.WriteLine(message);
+                return response;
+            }
+            var user = users[userName];
+
+            await Task.Run(() =>
+            {
                 user.State = state;
-                await LobbyMember(userName, user.State);
+                _ = Task.Run(() => LobbyMember(userName, user.State));
             });
 
             response.MessageCode = (int)MessageCode.Success;
             response.Message = "Success";
-            response.State = state;
+            response.State = user.State;
 
             return response;
         }
@@ -403,7 +452,17 @@ namespace QplayChatServer.server
         public async Task<ApiResponse.BuyItem> BuyItem(int itemId, string userName)
         {
             var response = new ApiResponse.BuyItem();
-            var user = ServerManager.GetInstance().Users[userName];
+            var serverManager = ServerManager.GetInstance();
+            var users = serverManager.Users;
+            if (!users.ContainsKey(userName))
+            {
+                var message = $"WebReadMessages.BuyItem Error!! {userName} KeyNotFound";
+                response.MessageCode = (int)MessageCode.Fail;
+                response.Message = message;
+                Console.WriteLine(message);
+                return response;
+            }
+            var user = serverManager.Users[userName];
             var shopTable = Database.GetInstance().ShopTable;
             int price = shopTable[itemId].Price;
             //-- 이미 보유하고 있는 아이템의 경우
@@ -460,7 +519,17 @@ namespace QplayChatServer.server
         public async Task<ApiResponse.EquipItems> EquipItems(Dictionary<int, bool> equipItems, string userName)
         {
             var response = new ApiResponse.EquipItems();
+            var users = ServerManager.GetInstance().Users;
+            if (!users.ContainsKey(userName))
+            {
+                var message = $"WebReadMessages.EquipItems Error!! {userName} KeyNotFound";
+                response.MessageCode = (int)MessageCode.Fail;
+                response.Message = message;
+                Console.WriteLine(message);
+                return response;
+            }
             response!.Items = new Dictionary<int, bool>();
+
             var user = ServerManager.GetInstance().Users[userName];
             var items = user.Items;
 
@@ -521,51 +590,6 @@ namespace QplayChatServer.server
             return response;
         }
 
-        //-- 로비 유저들에게 접속한 유저 정보 전송
-        public async Task AddUserLobbyMember(UserInfo user)
-        {
-            await Task.Run(() =>
-            {
-                var packet = new ChatBase.AddUserLobbyMember();
-                packet!.State = user.State;
-                packet.RoomNumber = user.RoomNumber;
-                packet.UserName = user.UserName;
-
-                var message = new ChatBase.Packet();
-                message!.Opcode = (int)Opcode.AddUserLobbyMember;
-                message.Message = JsonConvert.SerializeObject(packet);
-
-                var messages = ServerManager.GetInstance().ChatMessages;
-                messages!.Enqueue(message);
-                ServerManager.GetInstance().ChatSemaphore.Release();
-            });
-
-        }
-
-        //-- 로비 유저들에게 생성된 방 정보 송신
-        public async Task AddChatRoomLobbyMember(UserInfo user)
-        {
-            await Task.Run(() =>
-            {
-                var packet = new ChatBase.AddChatRoomLobbyMember();
-                packet!.State = user.State;
-                packet.UserName = user.UserName;
-                packet.RoomNumber = user.RoomNumber;
-
-                var room = ServerManager.GetInstance().JoinRooms[user.RoomNumber];
-                packet.CurrentMember = room.CurrentMember;
-                packet.RoomName = room.RoomName;
-                packet.OwnerName = room.OwnerName;
-
-                var message = new ChatBase.Packet();
-                message!.Opcode = (int)Opcode.AddChatRoomLobbyMember;
-                message.Message = JsonConvert.SerializeObject(packet);
-
-                var messages = ServerManager.GetInstance().ChatMessages;
-                messages!.Enqueue(message);
-                ServerManager.GetInstance().ChatSemaphore.Release();
-            });
-        }
 
         //-- 로비 유저들에게 방 입/퇴장 유저 및 갱신된 방 정보 (방번호, 인원수) 송신
         public async Task RoomLobbyMember(string userName, int state, int roomNumber, int currentMember)
@@ -588,7 +612,46 @@ namespace QplayChatServer.server
                 ServerManager.GetInstance().ChatSemaphore.Release();
             });
         }
+        public async Task AddChatRoomLobbyMember(User user)
+        {
+            await Task.Run(() =>
+            {
+                var packet = new ChatBase.AddChatRoomLobbyMember();
+                packet!.State = user.State;
+                packet.UserName = user.UserName;
+                packet.RoomNumber = user.RoomNumber;
 
+                var room = ServerManager.GetInstance().Rooms[user.RoomNumber];
+                packet.CurrentMember = room.CurrentMember;
+                packet.RoomName = room.RoomName;
+
+                var message = new ChatBase.Packet();
+                message!.Opcode = (int)Opcode.AddChatRoomLobbyMember;
+                message.Message = JsonConvert.SerializeObject(packet);
+
+                var messages = ServerManager.GetInstance().ChatMessages;
+                messages!.Enqueue(message);
+                ServerManager.GetInstance().ChatSemaphore.Release();
+            });
+        }
+        public async Task AddUserLobbyMember(User user)
+        {
+            await Task.Run(() =>
+            {
+                var packet = new ChatBase.AddUserLobbyMember();
+                packet!.State = user.State;
+                packet.RoomNumber = user.RoomNumber;
+                packet.UserName = user.UserName;
+
+                var message = new ChatBase.Packet();
+                message!.Opcode = (int)Opcode.AddUserLobbyMember;
+                message.Message = JsonConvert.SerializeObject(packet);
+
+                var messages = ServerManager.GetInstance().ChatMessages;
+                messages!.Enqueue(message);
+                ServerManager.GetInstance().ChatSemaphore.Release();
+            });
+        }
         //-- 로비 유저들에게 변경된 유저 상태 송신
         public async Task LobbyMember(string userName, int state)
         {
@@ -609,27 +672,18 @@ namespace QplayChatServer.server
             });
         }
 
-        public async Task JoinRoomMember(UserInfo user, JoinRoomInfo room, int roomNumber, int slotNumber)
+        public async Task JoinRoomMember(int currentMember, Character character)
         {
             var messages = ServerManager.GetInstance().ChatMessages;
             await Task.Run(() =>
             {
                 var packet = new ChatBase.JoinRoomMember();
-                packet!.RoomNumber = roomNumber;
-                packet.CurrentMember = room.CurrentMember;
-                packet.SlotNumber = slotNumber;
-                packet.UserName = user.UserName;
-                packet.Gender = user.Gender;
-                packet.Model = user.Model;
-                packet.EquipItems = new List<int>();
-
-                foreach (var item in user.Items!)
-                {
-                    var isEquip = item.Value;
-                    if (!isEquip) continue;
-
-                    packet.EquipItems.Add(item.Key);
-                }
+                packet!.CurrentMember = currentMember;
+                packet.SlotNumber = character.SlotNumber;
+                packet.UserName = character.UserName;
+                packet.Gender = character.Gender;
+                packet.Model = character.Model;
+                packet.EquipItems = character.Items;
 
                 var message = new ChatBase.Packet();
                 message!.Opcode = (int)Opcode.JoinRoomMember;
@@ -639,7 +693,7 @@ namespace QplayChatServer.server
                 ServerManager.GetInstance().ChatSemaphore.Release();
             });
         }
-        public async Task ExitRoomMember(int roomNumber, int slotNumber)
+        public async Task ExitRoomMember(int roomNumber, int slotNumber, string userName, int currentMember)
         {
             var messages = ServerManager.GetInstance().ChatMessages;
             await Task.Run(() =>
@@ -647,7 +701,8 @@ namespace QplayChatServer.server
                 var packet = new ChatBase.ExitRoomMember();
                 packet!.RoomNumber = roomNumber;
                 packet.SlotNumber = slotNumber;
-
+                packet.UserName = userName;
+                packet.CurrentMember = currentMember;
                 var message = new ChatBase.Packet();
                 message!.Opcode = (int)Opcode.ExitRoomMember;
                 message.Message = JsonConvert.SerializeObject(packet);
@@ -656,6 +711,8 @@ namespace QplayChatServer.server
                 ServerManager.GetInstance().ChatSemaphore.Release();
             });
         }
+
+
 
     }
 

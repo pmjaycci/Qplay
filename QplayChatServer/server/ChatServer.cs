@@ -5,6 +5,7 @@ using System.Net.Sockets;
 using System.Text;
 using Newtonsoft.Json;
 using QplayChatServer.server;
+using Util;
 using ZstdNet;
 
 namespace QplayChatServer
@@ -61,8 +62,13 @@ namespace QplayChatServer
         //-- 클라이언트 요청 메시지 비동기 처리
         private static async Task HandleTcpClientAsync(TcpClient client, CancellationToken cancellationToken)
         {
+            string userName = "";
+            var ip = $"{((IPEndPoint)client.Client.RemoteEndPoint!).Address}";
+            var port = $"{((IPEndPoint)client.Client.RemoteEndPoint!).Port}";
             try
             {
+                Console.WriteLine($"TCP 클라이언트 연결됨: {ip}:{port}");
+
                 //-- 호출 들어온 유저의 스트림
                 NetworkStream stream = client.GetStream();
                 byte[] buffer = new byte[1024];
@@ -73,16 +79,17 @@ namespace QplayChatServer
 
                     if (bytesRead > 0)
                     {
-                        var ip = $"{((IPEndPoint)client.Client.RemoteEndPoint!).Address}";
-                        var port = $"{((IPEndPoint)client.Client.RemoteEndPoint!).Port}";
-                        Console.WriteLine($"TCP 클라이언트 연결됨: {ip}:{port}");
-
                         string request = Encoding.UTF8.GetString(buffer, 0, bytesRead);
-
+                        Console.WriteLine(request);
                         var packet = JsonConvert.DeserializeObject<ChatBase.Packet>(request);
+                        if (packet!.Opcode == (int)Opcode.Logout)
+                        {
+                            userName = JsonConvert.DeserializeObject<string>(packet.Message!)!;
+                            break;
+                        }
 
                         //-- 메시지 체크후 반환된 Opcode값에 따라 타 유저에게 메시지 전달해야되는 메시지의 경우 Queue에 담아 비동기로 처리
-                        var responsePacket = await ChatReadMessages.GetInstance().ReadMessage(client, packet!);
+                        _ = Task.Run(() => ChatReadMessages.GetInstance().ReadMessage(client, packet!));
 
                     }
                 }
@@ -93,36 +100,23 @@ namespace QplayChatServer
             }
             finally
             {
-                Console.WriteLine($"TCP 클라이언트 연결 해제됨: {((IPEndPoint)client.Client.RemoteEndPoint!).Address}");
-                string? userName = "";
-
-                //-- 연결 종료로 인해 캐싱되어 있는 Client의 데이터 삭제
                 var serverManager = ServerManager.GetInstance();
                 var clients = serverManager.Clients;
                 var users = serverManager.Users;
-                foreach (var disconnectClient in clients)
-                {
 
-                    if (disconnectClient.Value == client)
-                    {
-                        userName = disconnectClient.Key;
-                        break;
-                    }
-                }
                 if (clients.ContainsKey(userName))
                 {
-                    clients.TryRemove(userName, out _);
+                    client.Close();
+                    clients.TryRemove(userName, out client!);
+                    Console.WriteLine($"유저 로그아웃! 정보 제거: {userName}");
                 }
                 if (users.ContainsKey(userName))
                 {
-                    var WebReadMessages = new WebReadMessages();
-                    await WebReadMessages.ExitRoom(userName);
-                    users.TryRemove(userName, out _);
-                    Console.WriteLine($"유저 로그아웃! 정보 제거: {userName}");
+                    var api = WebReadMessages.GetInstance();
+                    var response = await api.ExitRoom(userName, (int)Opcode.Logout);
                 }
 
-                client.Close();
-
+                Console.WriteLine($"TCP 클라이언트 연결 해제됨: {ip}:{port}");
             }
         }
 

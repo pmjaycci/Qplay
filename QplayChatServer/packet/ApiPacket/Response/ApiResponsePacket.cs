@@ -11,29 +11,41 @@ namespace ApiResponse
     {
         public int State { get; set; }
         public int RoomNumber { get; set; }
+        public int SlotNumber { get; set; }
         public string? UserName { get; set; }
         public int Gender { get; set; }
         public int Model { get; set; }
         public int Money { get; set; }
         public Dictionary<int, bool>? Items { get; set; }
-        public Dictionary<int, CreatedRoomInfo>? CreatedRoomsInfo { get; set; }
-        public List<LobbyUserInfo>? LobbyUsersInfo { get; set; }
+        public Dictionary<int, Room>? Rooms { get; set; }
+        public List<LoginUser>? LoginUsers { get; set; }
     }
-    public class Room : Packet
+
+    public class CreateRoom : Packet
     {
         public int State { get; set; }
         public int RoomNumber { get; set; }
+        public int SlotNumber { get; set; }
         public int CurrentMember { get; set; }
         public string? RoomName { get; set; }
         public string? OwnerName { get; set; }
-        public Dictionary<int, JoinRoomUserInfo>? JoinRoomUsersInfo { get; set; }
+    }
+    public class JoinRoom : Packet
+    {
+        public int State { get; set; }
+        public int RoomNumber { get; set; }
+        public int SlotNumber { get; set; }
+        public int CurrentMember { get; set; }
+        public string? RoomName { get; set; }
+        public string? OwnerName { get; set; }
+        public List<Character>? Characters { get; set; }
     }
 
     public class ExitRoom : Packet
     {
         public int State { get; set; }
-        public Dictionary<int, CreatedRoomInfo>? CreatedRoomsInfo { get; set; }
-        public List<LobbyUserInfo>? LobbyUsersInfo { get; set; }
+        public Dictionary<int, Room>? Rooms { get; set; }
+        public List<LoginUser>? LoginUsers { get; set; }
     }
     public class SceneChange : Packet
     {

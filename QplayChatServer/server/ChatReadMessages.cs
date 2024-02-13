@@ -23,9 +23,8 @@ namespace QplayChatServer.server
         }
         #endregion
         //-- 클라이언트 메시지 응답 처리
-        public async Task<ChatBase.Packet> ReadMessage(TcpClient client, ChatBase.Packet request)
+        public async Task ReadMessage(TcpClient client, ChatBase.Packet request)
         {
-            var response = new ChatBase.Packet();
             int opcode = request!.Opcode;
             await Task.Run(() =>
             {
@@ -34,7 +33,7 @@ namespace QplayChatServer.server
                     case (int)Opcode.JoinGame:
                         {
                             var joinGame = JsonConvert.DeserializeObject<ChatRequest.JoinGame>(request.Message!);
-                            string? userName = joinGame!.UserName;
+                            var userName = joinGame!.UserName!;
 
                             var clients = ServerManager.GetInstance().Clients;
 
@@ -62,42 +61,26 @@ namespace QplayChatServer.server
                             }
 
 
-                            var packet = new ChatResponse.Packet();
-                            packet!.MessageCode = (int)MessageCode.Success;
-                            packet.Message = "Success";
-
-                            response!.Opcode = (int)Opcode.Message;
-                            response!.Message = JsonConvert.SerializeObject(packet);
                         }
                         break;
                     case (int)Opcode.Chat:
                         {
+                            var packet = JsonConvert.DeserializeObject<ChatBase.Chat>(request.Message!);
+                            var userName = packet!.UserName!;
                             var messages = ServerManager.GetInstance().ChatMessages;
                             messages!.Enqueue(request);
                             //-- 메시지가 도착할 때마다 SemaphoreSlim을 Release하여 대기 상태에서 깨움
                             ServerManager.GetInstance().ChatSemaphore.Release();
-
-                            var packet = new ChatResponse.Packet();
-                            packet!.MessageCode = (int)MessageCode.Success;
-                            packet.Message = "Success";
-
-                            response!.Opcode = (int)Opcode.Message;
-                            response!.Message = JsonConvert.SerializeObject(packet);
                         }
                         break;
                     default:
                         {
-                            var packet = new ChatResponse.Packet();
-                            packet!.MessageCode = (int)MessageCode.BadRequest;
-                            packet.Message = "Bad Request";
 
-                            response!.Opcode = opcode;
-                            response.Message = JsonConvert.SerializeObject(packet);
                             break;
                         }
                 }
             });
-            return response;
+            return;
 
         }
 
@@ -217,14 +200,14 @@ namespace QplayChatServer.server
                     case (int)Opcode.JoinRoomMember:
                         {
                             var packet = JsonConvert.DeserializeObject<ChatBase.JoinRoomMember>(request.Message!);
-
+                            var joinUser = users[packet!.UserName!];
                             foreach (var user in users)
                             {
-                                var currentUser = user.Value;
+                                var roomUser = user.Value;
                                 //-- 전달받을 유저의 클라이언트가 없을경우
                                 if (!clients.ContainsKey(user.Key)) continue;
-                                if (currentUser.UserName == packet!.UserName) continue;
-                                if (currentUser.State == (int)UserState.Room && currentUser.RoomNumber == packet.RoomNumber)
+                                if (roomUser.UserName == packet!.UserName) continue;
+                                if (roomUser.State == (int)UserState.Room && roomUser.RoomNumber == joinUser.RoomNumber)
                                 {
                                     result.Enqueue(clients[user.Value.UserName!]);
                                     userNames.Add(user.Value.UserName!);

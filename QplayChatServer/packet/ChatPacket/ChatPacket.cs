@@ -27,7 +27,6 @@ namespace ChatBase
         public int RoomNumber { get; set; }
         public int CurrentMember { get; set; }
         public string? RoomName { get; set; }
-        public string? OwnerName { get; set; }
     }
 
     public class RoomLobbyMember
@@ -48,7 +47,6 @@ namespace ChatBase
     #region 채팅방 유저에게 보낼 패킷
     public class JoinRoomMember
     {
-        public int RoomNumber { get; set; }
         public int CurrentMember { get; set; }
         public int SlotNumber { get; set; }
         public string? UserName { get; set; }

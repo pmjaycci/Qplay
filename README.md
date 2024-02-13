@@ -1,7 +1,7 @@
 ---
 Qplay Project
 ---
-게임 플레이 영상 링크 : https://youtu.be/OL8IsQ9XXVg
+* 게임 플레이 영상 링크 : https://youtu.be/OL8IsQ9XXVg
 ---
 작업자
 ---

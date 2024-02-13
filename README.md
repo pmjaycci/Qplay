@@ -1,19 +1,28 @@
 Qplay Project
 ---
-* Server 영상 링크 : https://youtu.be/6zgo1bKeIv0
+게임 플레이 영상 링크 : https://youtu.be/OL8IsQ9XXVg
+---
+작업자
+---
+* 서버 : 엄재창, 클라이언트 : 엄재창, 아트 : 엄재창
 
 ---
 깃 주소
 ---
-* 게임 서버 (Game Server) : https://github.com/Project-Team-YD/GameServer
-* 로그인 서버 (Login Server) : https://github.com/Project-Team-YD/LoginServer
-* 알림 서버 (Notification Server) : https://github.com/Project-Team-YD/NotificationServer
+* 클라이언트 : https://github.com/QplayProject/Client
 ---
-사용 기술
+프로젝트 구성
 ---
-* C# ASP.Net Core
+* 서버
+- 로그인 서버
+- 채팅 서버
+- DB 서버
+  
+* C# ASP.Net Core API (HTTP)
+- 로그인 서버와 채팅서버에 모두 사용 되었습니다.
+* TCP Socket
+  
 * MySQL
-* Redis
 ---
 Login Server
 ---

@@ -19,10 +19,9 @@ class Program
         await Database.GetInstance().LoadTableDatabase();
 
         WebServer webServer = new WebServer();
-        // HTTP 서버 시작 (메인 스레드에서 실행)
         Task httpTask = webServer.RunHttpServer(cts.Token);
+
         Server chatServer = new Server();
-        // TCP 서버 시작 (별도의 스레드에서 실행)
         Task tcpTask = chatServer.RunTcpServer(cts.Token);
 
         // 모든 작업이 완료될 때까지 대기

@@ -7,16 +7,11 @@ namespace ApiResponse
         public int MessageCode { get; set; }
         public string? Message { get; set; }
     }
+
+
+
     public class JoinGame : Packet
     {
-        public int State { get; set; }
-        public int RoomNumber { get; set; }
-        public int SlotNumber { get; set; }
-        public string? UserName { get; set; }
-        public int Gender { get; set; }
-        public int Model { get; set; }
-        public int Money { get; set; }
-        public Dictionary<int, bool>? Items { get; set; }
         public Dictionary<int, Room>? Rooms { get; set; }
         public List<LoginUser>? LoginUsers { get; set; }
     }

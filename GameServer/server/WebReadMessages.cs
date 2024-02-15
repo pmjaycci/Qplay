@@ -3,6 +3,8 @@ using Newtonsoft.Json;
 using Util;
 using GameInfo;
 using ZstdNet;
+using Ubiety.Dns.Core;
+using System.ComponentModel;
 
 namespace server
 {
@@ -20,121 +22,91 @@ namespace server
             return instance;
         }
         #endregion
+        #region LoginServer
+        public async Task<ApiResponse.Packet> Login(ApiRequest.Login request)
+        {
+            var response = new ApiResponse.Packet();
+            var serverManager = ServerManager.GetInstance();
+            var users = serverManager.Users;
+            var userName = request.UserName!;
 
-        /* 게임 입장하기 구조  
-        * Tcp서버에도 JoinGame Opcode로 추가 전송후 서버에서 해당 TCP클라이언트 Dictionary에 캐싱하여 관리
-        유저 인벤토리 테이블 오픈후
-        ServerManager.Users에 인벤토리, 캐릭터 정보, 상태 저장
-        ==
-        - [해당 유저 닉네임, 상태(로비), 방 번호] 로비 유저 클라이언트에 전송 1
-        */
+            await Task.Run(() =>
+            {
+                if (!users.ContainsKey(userName))
+                {
+                    User user = new User();
+                    user!.UserName = request.UserName;
+                    user.State = request.State;
+                    user.RoomNumber = request.RoomNumber;
+                    user.SlotNumber = request.SlotNumber;
+                    user.Gender = request.Gender;
+                    user.Model = request.Model;
+                    user.Money = request.Money;
+                    user.Items = request.Items;
+                    users.TryAdd(userName, user);
+                }
+                else
+                {
+                    var user = users[userName];
+                    user!.UserName = request.UserName;
+                    user.State = request.State;
+                    user.RoomNumber = request.RoomNumber;
+                    user.SlotNumber = request.SlotNumber;
+                    user.Gender = request.Gender;
+                    user.Model = request.Model;
+                    user.Money = request.Money;
+                    user.Items = request.Items;
+                }
+
+            });
+
+            response.MessageCode = (int)MessageCode.Success;
+            response.Message = "성공적으로 로그인 하였습니다.";
+            return response;
+        }
+        #endregion
         public async Task<ApiResponse.JoinGame> JoinGame(string userName)
         {
             var response = new ApiResponse.JoinGame();
             var serverManager = ServerManager.GetInstance();
             var users = serverManager.Users;
-            if (!users.ContainsKey(userName))
-            {
-                User user = new User();
-                user!.UserName = userName;
-                user.State = (int)UserState.Lobby;
-                user.RoomNumber = -1;
-                user.SlotNumber = -1;
-                user.Items = new ConcurrentDictionary<int, bool>();
 
-                response.State = (int)UserState.Lobby;
-                response.RoomNumber = user.RoomNumber;
-                response.SlotNumber = user.SlotNumber;
-                response.UserName = user!.UserName;
-                response.Items = new Dictionary<int, bool>();
-
-                var sql = $"SELECT gender, model, money, inventory.item_id, inventory.is_equip FROM account LEFT JOIN inventory ON account.uuid = inventory.uuid WHERE account.uuid = @uuid";
-                var param = new Dictionary<string, object?>();
-                param["@uuid"] = userName;
-
-                int itemId;
-                bool isEquip;
-
-                using (var result = await Database.GetInstance().Query(sql, param, (int)DB.UserDB))
-                {
-                    while (result.Read())
-                    {
-                        user.Gender = Convert.ToInt32(result["gender"]);
-                        user.Money = Convert.ToInt32(result["money"]);
-                        user.Model = Convert.ToInt32(result["model"]);
-                        response.Gender = user.Gender;
-                        response.Model = user.Model;
-                        response.Money = user.Money;
-                        bool isItemNull = result.IsDBNull(result.GetOrdinal("item_id"));
-                        if (!isItemNull)
-                        {
-                            itemId = Convert.ToInt32(result["item_id"]);
-                            isEquip = Convert.ToBoolean(result["is_equip"]);
-                            user.Items[itemId] = isEquip;
-                            response.Items![itemId] = isEquip;
-                        }
-                    }
-
-                }
-                if (users.TryAdd(userName, user))
-                {
-                    Console.WriteLine($"유저 생성함 : {userName}");
-                }
-                else
-                {
-                    Console.WriteLine($"유저 생성 실패 : {userName}");
-                }
-
-
-            }
-            else
-            {
-                var userInfo = users[userName];
-                response!.State = (int)UserState.Lobby;
-                response.RoomNumber = -1;
-                response.SlotNumber = -1;
-                response.UserName = userInfo.UserName;
-                response.Gender = userInfo.Gender;
-                response.Model = userInfo.Model;
-                response.Money = userInfo.Money;
-                response.Items = new Dictionary<int, bool>();
-                foreach (var item in userInfo.Items!)
-                {
-                    response.Items[item.Key] = item.Value;
-                }
-            }
 
             response!.Rooms = new Dictionary<int, Room>();
             var rooms = serverManager.Rooms;
-            //-- 생성된 방 정보 받기
-            foreach (var roomInfo in rooms)
+            await Task.Run(() =>
             {
-                var room = roomInfo.Value;
-                if (room.CurrentMember <= 0) continue; //-- 현재인원이 0명이하일 경우 건너뛰기
+                //-- 생성된 방 정보 받기
+                foreach (var roomInfo in rooms)
+                {
+                    var room = roomInfo.Value;
+                    if (room.CurrentMember <= 0) continue; //-- 현재인원이 0명이하일 경우 건너뛰기
 
-                int createdRoomNumber = roomInfo.Key;
-                var createdRoomInfo = new Room();
-                createdRoomInfo!.RoomNumber = createdRoomNumber;
-                createdRoomInfo.CurrentMember = roomInfo.Value.CurrentMember;
-                createdRoomInfo.RoomName = roomInfo.Value.RoomName;
-                createdRoomInfo.OwnerName = roomInfo.Value.OwnerName;
+                    int createdRoomNumber = roomInfo.Key;
+                    var createdRoomInfo = new Room();
+                    createdRoomInfo!.RoomNumber = createdRoomNumber;
+                    createdRoomInfo.CurrentMember = roomInfo.Value.CurrentMember;
+                    createdRoomInfo.RoomName = roomInfo.Value.RoomName;
+                    createdRoomInfo.OwnerName = roomInfo.Value.OwnerName;
 
-                response.Rooms[roomInfo.Key] = createdRoomInfo;
-            }
+                    response.Rooms[roomInfo.Key] = createdRoomInfo;
+                }
 
-            //-- 접속중인 유저들 정보 받기
-            response.LoginUsers = new List<LoginUser>();
+                //-- 접속중인 유저들 정보 받기
+                response.LoginUsers = new List<LoginUser>();
 
-            foreach (var info in users)
-            {
-                var user = info.Value;
-                var loginUser = new LoginUser();
-                loginUser!.UserName = user.UserName;
-                loginUser.State = user.State;
-                loginUser.RoomNumber = user.RoomNumber;
+                foreach (var info in users)
+                {
+                    var user = info.Value;
+                    var loginUser = new LoginUser();
+                    loginUser!.UserName = user.UserName;
+                    loginUser.State = user.State;
+                    loginUser.RoomNumber = user.RoomNumber;
 
-                response.LoginUsers.Add(loginUser);
-            }
+                    response.LoginUsers.Add(loginUser);
+                }
+
+            });
 
 
             response.MessageCode = (int)MessageCode.Success;
@@ -147,16 +119,7 @@ namespace server
             Console.WriteLine(test);
             return response;
         }
-        //-- 로비 유저들에게 접속한 유저 정보 전송
 
-        /* 방 생성하기 구조 
-        미리 생성된 채팅방 목록중 RoomName 값이 null값인 채팅방 탐색후
-        유저가 요청한 데이터로 채팅방 정보 갱신 및 
-        ServerManager.Users의 상태, 방번호 변경
-        ==
-        - [해당 유저 닉네임, 상태(채팅방), 방 번호] 로비 유저 클라이언트에 전송 1
-        - [해당 방 정보 (방 번호, 제목, 인원수, 방 인원 닉네임)] 로비 유저 클라이언트에 전송 2
-        */
         public async Task<ApiResponse.CreateRoom> CreateRoom(string roomName, string userName)
         {
             var response = new ApiResponse.CreateRoom();
@@ -239,14 +202,6 @@ namespace server
             return response;
         }
         //-- 로비 유저들에게 생성된 방 정보 송신
-
-
-        /* 방 입장하기 구조
-        ==
-        - [해당 유저 닉네임, 상태(채팅방), 방 번호] 로비 유저 클라이언트에 전송 1
-        - [해당 방 정보 (방 번호, 인원수, 방 인원 닉네임)] 로비 유저 클라이언트에 전송 3
-        - [해당 유저 정보 (닉네임, 의상), 자리 슬롯 번호] 접속하는 채팅방 유저 클라이언트에 전송 4
-        */
         public async Task<ApiResponse.JoinRoom> JoinRoom(int roomNumber, string userName)
         {
             var response = new ApiResponse.JoinRoom();
@@ -463,8 +418,8 @@ namespace server
                 return response;
             }
             var user = serverManager.Users[userName];
-            var shopTable = Database.GetInstance().ShopTable;
-            int price = shopTable[itemId].Price;
+            var itemTable = Database.GetInstance().ItemTable;
+            int price = itemTable[itemId].Price;
             //-- 이미 보유하고 있는 아이템의 경우
             if (user.Items!.ContainsKey(itemId))
             {
@@ -516,6 +471,7 @@ namespace server
 
             return response;
         }
+
         public async Task<ApiResponse.EquipItems> EquipItems(Dictionary<int, bool> equipItems, string userName)
         {
             var response = new ApiResponse.EquipItems();

@@ -9,10 +9,6 @@ namespace Table
         public int Category;
         public int Gender;
         public string? ImgId;
-    }
-    public class ShopItem
-    {
-        public int Id;
         public int Price;
     }
 }
@@ -20,7 +16,6 @@ namespace GameInfo
 {
     public class User
     {
-        //-- enum : UserState
         public int State { get; set; }
         public int RoomNumber { get; set; }
         public int SlotNumber { get; set; }

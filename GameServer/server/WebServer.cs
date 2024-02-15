@@ -40,10 +40,9 @@ namespace server
 
             var app = builder.Build();
 
-            app.MapGet("/", HandleHttpGetRequest);
-            app.MapPost("/", HandleHttpPostRequest);
-            app.MapGet("/api", HandleHttpGetRequest);
+            app.MapPost("/", HandleHttpTestPostRequest);
             app.MapPost("/api", HandleHttpPostRequest);
+            app.MapPost("/login", HandleHttpLoginServerPostRequest);
 
             if (app.Environment.IsDevelopment())
             {
@@ -71,17 +70,68 @@ namespace server
         }
 
         // HandleHttpGetRequest 메서드 추가
-        static async Task HandleHttpGetRequest(HttpContext context)
+        static async Task HandleHttpTestPostRequest(HttpContext context)
         {
             await context.Response.WriteAsync("===========");
         }
+        static async Task HandleHttpLoginServerPostRequest(HttpContext context)
+        {
+            string response = await ReadLoginServerMessage(context);
+            context.Response.ContentType = "application/json";
+            await context.Response.WriteAsync(response);
+        }
+        static async Task<string> ReadLoginServerMessage(HttpContext context)
+        {
+            int header = int.Parse(context.Request.Headers["MessageType"]);
+            string responseJson = "";
+            var headerString = "";
+            using (StreamReader reader = new StreamReader(context.Request.Body))
+            {
+                string requestBody = await reader.ReadToEndAsync();
+
+                switch (header)
+                {
+                    //TODO JoinGame~ExitShop까지 로비에 있는 유저들에게 TCP로 메시지 호출해줘야함
+                    case (int)RequestHeader.JoinGame:
+                        headerString = "JoinGame";
+                        break;
+                    default:
+                        headerString = "잘못된 헤더";
+                        break;
+                }
+                Console.WriteLine("----------------------------------------------------------");
+                Console.WriteLine($"LoginServerApiRequest:: Header::{headerString}");
+                switch (header)
+                {
+                    case (int)RequestHeader.JoinGame:
+                        {
+                            var request = JsonConvert.DeserializeObject<ApiRequest.Login>(requestBody);
+                            var response = await WebReadMessages.GetInstance().Login(request!);
+                            responseJson = JsonConvert.SerializeObject(response);
+                        }
+                        break;
+                    default:
+                        {
+                            var response = new ApiResponse.Packet();
+                            response!.MessageCode = (int)MessageCode.BadRequest;
+                            response!.Message = "Bad Request!!";
+                            responseJson = JsonConvert.SerializeObject(response);
+                        }
+                        break;
+                }
+            }
+            Console.WriteLine($"LoginServerApiResponse:: Header:{headerString}");//\n{responseJson}");
+            Console.WriteLine("----------------------------------------------------------");
+            return responseJson;
+
+        }
+
         static async Task HandleHttpPostRequest(HttpContext context)
         {
             string response = await ReadPostMessage(context);
             context.Response.ContentType = "application/json";
             await context.Response.WriteAsync(response);
         }
-
         static async Task<string> ReadPostMessage(HttpContext context)
         {
             int header = int.Parse(context.Request.Headers["MessageType"]);

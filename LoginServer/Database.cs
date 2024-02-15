@@ -1,5 +1,6 @@
 using System.Data;
 using MySql.Data.MySqlClient;
+using Table;
 using Util;
 
 public class Database
@@ -11,13 +12,12 @@ public class Database
     public IDbConnection TableDB;
 
     public Dictionary<int, Item> ItemTable = new Dictionary<int, Item>();
-    public Dictionary<int, ShopItem> ShopTable = new Dictionary<int, ShopItem>();
 
     private Database()
     {
         // 연결 문자열에 커넥션 풀링을 사용하도록 설정
-        var userDatabaseUrl = "Server=13.125.254.231;Port=3306;Database=user_db;Uid=root;Pwd=jaycci1@;Pooling=true;";
-        var tableDatabaseUrl = "Server=13.125.254.231;Port=3306;Database=table_db;Uid=root;Pwd=jaycci1@;Pooling=true;";
+        var userDatabaseUrl = "Server=13.125.254.231;Port=3306;Database=user_db;Uid=root;Pwd=jaycci1@;Pooling=true; KeepAlive = 3600";
+        var tableDatabaseUrl = "Server=13.125.254.231;Port=3306;Database=table_db;Uid=root;Pwd=jaycci1@;Pooling=true; KeepAliver = 3600";
 
         // MySqlConnection 대신 IDbConnection 인터페이스를 사용하여 다른 데이터베이스에도 유연하게 대응할 수 있습니다.
         UserDB = new MySqlConnection(userDatabaseUrl);
@@ -182,28 +182,16 @@ public class Database
         while (result.Read())
         {
             Item item = new Item();
-            item.Id = Convert.ToInt32(result["id"]);
+            item!.Id = Convert.ToInt32(result["id"]);
             item.Name = Convert.ToString(result["name"]);
             item.Category = Convert.ToInt32(result["category"]);
             item.Gender = Convert.ToInt32(result["gender"]);
             item.ImgId = Convert.ToString(result["img_id"]);
+            item.Price = Convert.ToInt32(result["price"]);
             ItemTable[item.Id] = item;
         }
         result.Close();
         Console.WriteLine("ItemTable 캐싱 완료");
-        Console.WriteLine("-----------------");
-        Console.WriteLine("ShopTable 캐싱 시작");
-        query = "SELECT * FROM shop";
-        result = await Query(query, (int)DB.TableDB);
-        while (result.Read())
-        {
-            ShopItem shopItem = new ShopItem();
-            shopItem.Id = Convert.ToInt32(result["id"]);
-            shopItem.Price = Convert.ToInt32(result["price"]);
-            ShopTable[shopItem.Id] = shopItem;
-        }
-        result.Close();
-        Console.WriteLine("ShopTable 캐싱 완료");
         Console.WriteLine("-----------------");
     }
 }

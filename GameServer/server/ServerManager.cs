@@ -3,6 +3,7 @@ using System.Net.Sockets;
 using System.Text;
 using GameInfo;
 using Newtonsoft.Json;
+using Util;
 
 namespace server
 {
@@ -36,6 +37,7 @@ namespace server
 
         //-- 유저 정보 캐싱 : 상태, 방번호, 이름, 착용아이템 등..
         public ConcurrentDictionary<string, User> Users = new ConcurrentDictionary<string, User>();
+        public ConcurrentDictionary<string, TcpClient> Clients = new ConcurrentDictionary<string, TcpClient>();
         //-- 생성된 채팅방 정보 캐싱 : 방 제목, 방장 이름, 입장 유저 정보
         public ConcurrentDictionary<int, Room> Rooms = new ConcurrentDictionary<int, Room>();
         public ConcurrentQueue<ServerPacket.Packet>? ChatMessages = new ConcurrentQueue<ServerPacket.Packet>();
@@ -60,15 +62,31 @@ namespace server
             return character;
         }
         #endregion
+        public string GetOpcodeString(int opcode)
+        {
+            switch (opcode)
+            {
+                case (int)Opcode.JoinGame:
+                    return "JoinGame";
+                case (int)Opcode.AddUserLobbyMember:
+                    return "AddUserLobbyMember";
+                case (int)Opcode.AddChatRoomLobbyMember: //-- 본인을 제외한 로비에 위치한 유저들 가져옴
+                    return "AddChatRoomLobbyMember";
+                case (int)Opcode.RoomLobbyMember:
+                    return "RoomLobbyMember";
+                case (int)Opcode.LobbyMember:
+                    return "LobbyMember";
+                case (int)Opcode.JoinRoomMember:
+                    return "JoinRoomMember";
+                case (int)Opcode.ExitRoomMember:
+                    return "ExitRoomMember";
+                case (int)Opcode.Logout:
+                    return "Logout";
+                default:
+                    return $"NotFound! [{opcode}]";
+            }
 
-        #region Tcp Server
-        //-- 연결된 클라이언트 정보 캐싱 : 유저 명, 클라이언트
-        //public ConcurrentDictionary<string, TcpClient> Clients = new ConcurrentDictionary<string, TcpClient>();
-
-
-
-
-        #endregion
+        }
     }
 }
 

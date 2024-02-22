@@ -1,25 +1,33 @@
 {
   "format": 1,
   "restore": {
-    "/Users/jaycci/projects/Qplay/ChatServer/ChatServer.csproj": {}
+    "D:\\Qplay\\Server\\ChatServer\\ChatServer.csproj": {}
   },
   "projects": {
-    "/Users/jaycci/projects/Qplay/ChatServer/ChatServer.csproj": {
+    "D:\\Qplay\\Server\\ChatServer\\ChatServer.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "/Users/jaycci/projects/Qplay/ChatServer/ChatServer.csproj",
+        "projectUniqueName": "D:\\Qplay\\Server\\ChatServer\\ChatServer.csproj",
         "projectName": "ChatServer",
-        "projectPath": "/Users/jaycci/projects/Qplay/ChatServer/ChatServer.csproj",
-        "packagesPath": "/Users/jaycci/.nuget/packages/",
-        "outputPath": "/Users/jaycci/projects/Qplay/ChatServer/obj/",
+        "projectPath": "D:\\Qplay\\Server\\ChatServer\\ChatServer.csproj",
+        "packagesPath": "C:\\Users\\jaycc\\.nuget\\packages\\",
+        "outputPath": "D:\\Qplay\\Server\\ChatServer\\obj\\",
         "projectStyle": "PackageReference",
+        "fallbackFolders": [
+          "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages",
+          "C:\\Program Files (x86)\\Microsoft\\Xamarin\\NuGet\\"
+        ],
         "configFilePaths": [
-          "/Users/jaycci/.nuget/NuGet/NuGet.Config"
+          "C:\\Users\\jaycc\\AppData\\Roaming\\NuGet\\NuGet.Config",
+          "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.FallbackLocation.config",
+          "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.Offline.config",
+          "C:\\Program Files (x86)\\NuGet\\Config\\Xamarin.Offline.config"
         ],
         "originalTargetFrameworks": [
           "net6.0"
         ],
         "sources": {
+          "C:\\Program Files (x86)\\Microsoft SDKs\\NuGetPackages\\": {},
           "https://api.nuget.org/v3/index.json": {}
         },
         "frameworks": {
@@ -65,10 +73,29 @@
             "net47",
             "net471",
             "net472",
-            "net48"
+            "net48",
+            "net481"
           ],
           "assetTargetFallback": true,
           "warn": true,
+          "downloadDependencies": [
+            {
+              "name": "Microsoft.AspNetCore.App.Ref",
+              "version": "[6.0.27, 6.0.27]"
+            },
+            {
+              "name": "Microsoft.NETCore.App.Host.win-x64",
+              "version": "[6.0.27, 6.0.27]"
+            },
+            {
+              "name": "Microsoft.NETCore.App.Ref",
+              "version": "[6.0.27, 6.0.27]"
+            },
+            {
+              "name": "Microsoft.WindowsDesktop.App.Ref",
+              "version": "[6.0.27, 6.0.27]"
+            }
+          ],
           "frameworkReferences": {
             "Microsoft.AspNetCore.App": {
               "privateAssets": "none"
@@ -77,7 +104,7 @@
               "privateAssets": "all"
             }
           },
-          "runtimeIdentifierGraphPath": "/opt/homebrew/Cellar/dotnet@6/6.0.114/libexec/sdk/6.0.114/RuntimeIdentifierGraph.json"
+          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\7.0.116\\RuntimeIdentifierGraph.json"
         }
       }
     }

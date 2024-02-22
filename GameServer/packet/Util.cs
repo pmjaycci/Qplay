@@ -17,7 +17,6 @@ namespace GameInfo
 {
     public class User
     {
-        public TcpClient? Client { get; set; }
         public int State { get; set; }
         public int RoomNumber { get; set; }
         public int SlotNumber { get; set; }
@@ -65,6 +64,8 @@ namespace Util
 
     enum Opcode
     {
+        Ping,
+        Chat,
         JoinGame, //-- 게임 접속 (서버<->클라이언트)
         AddUserLobbyMember,
         AddChatRoomLobbyMember,

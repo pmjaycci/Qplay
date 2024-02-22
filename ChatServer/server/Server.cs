@@ -1,9 +1,11 @@
 using System.Collections.Concurrent;
 using System.Net;
 using System.Net.Sockets;
+using System.Reflection.Emit;
 using System.Text;
 using MessagePack;
 using Newtonsoft.Json;
+using Util;
 namespace server
 {
     public class Server
@@ -44,6 +46,7 @@ namespace server
             {
                 Console.WriteLine($"클라이언트 연결됨: {ip}:{port}");
 
+
                 //-- 호출 들어온 유저의 스트림
                 NetworkStream stream = client.GetStream();
                 byte[] lengthBytes = new byte[4];
@@ -63,6 +66,8 @@ namespace server
                         string request = Encoding.UTF8.GetString(buffer, 0, bytesRead);
                         Console.WriteLine("TEST:" + request);
                         var packet = JsonConvert.DeserializeObject<Chat.Packet>(request);
+
+
                         var userName = packet!.UserName;
                         var state = packet.State;
                         var roomNumber = packet.RoomNumber;
@@ -70,11 +75,18 @@ namespace server
                         {
                             var newUser = new User(client, userName!, state, roomNumber);
                             Users.TryAdd(userName!, newUser);
+                            ThreadPool.QueueUserWorkItem(_ => PingCheck(Users[userName!]));
+                            Console.WriteLine("핑 체크!!");
+                        }
+                        if (packet!.Opcode == (int)Opcode.Ping)
+                        {
+                            Users[userName!].IsAlive = true;
+                            continue;
                         }
                         var user = Users[userName!];
                         user.State = state;
                         user.RoomNumber = roomNumber;
-                        //-- 메시지 체크후 반환된 Opcode값에 따라 타 유저에게 메시지 전달해야되는 메시지의 경우 Queue에 담아 비동기로 처리
+
                         await Task.Run(() => SendMessage(packet, user));
                     }
                 }
@@ -110,6 +122,44 @@ namespace server
                 //-- 실제 데이터 전송
                 stream.Write(dataBytes, 0, dataBytes.Length);
             }
+        }
+        private static void PingCheck(User user)
+        {
+            var packet = new Chat.Packet();
+            packet!.Opcode = (int)Opcode.Ping;
+            packet.UserName = user.UserName;
+            packet.Message = "PingPong";
+            Console.WriteLine("핑 체크 시작");
+
+            while (true)
+            {
+                user.IsAlive = false;
+                SendPing(packet, user.Client!);
+                Thread.Sleep(3000);
+                if (!user.IsAlive)
+                {
+                    Console.WriteLine("사망");
+                }
+                else
+                    Console.WriteLine("생존");
+            }
+
+        }
+        private static void SendPing(Chat.Packet packet, TcpClient client)
+        {
+            string message = JsonConvert.SerializeObject(packet);
+            byte[] dataBytes = Encoding.UTF8.GetBytes(message);
+
+            //byte[] dataBytes = MessagePackSerializer.Serialize(packet);
+            // 데이터의 길이를 구하고 전송
+            int sendDataLength = dataBytes.Length;
+            byte[] byteLength = BitConverter.GetBytes(sendDataLength);
+
+            var stream = client.GetStream();
+            //-- 데이터 크기 전송
+            stream.Write(byteLength, 0, byteLength.Length);
+            //-- 실제 데이터 전송
+            stream.Write(dataBytes, 0, dataBytes.Length);
         }
     }
 

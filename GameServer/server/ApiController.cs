@@ -18,7 +18,7 @@ namespace server
         public async Task<IActionResult> Post([FromBody] ApiRequest.Login request)
         {
             string? testData = JsonConvert.SerializeObject(request);
-            Console.WriteLine("여기들어옴~~~~~~" + testData);
+            Console.WriteLine($"LoginController:{testData}");
 
             ApiResponse.Packet response = await Login(request);
             string? jsonData = JsonConvert.SerializeObject(response);
@@ -77,7 +77,7 @@ namespace server
         public async Task<IActionResult> Post([FromBody] ApiRequest.Packet request)
         {
             string? testData = JsonConvert.SerializeObject(request);
-            Console.WriteLine(testData);
+            Console.WriteLine($"JoinGameController:{testData}");
 
             ApiResponse.JoinGame response = await JoinGame(request.UserName!);
             string? jsonData = JsonConvert.SerializeObject(response);
@@ -148,7 +148,7 @@ namespace server
         public async Task<IActionResult> Post([FromBody] ApiRequest.CreateRoom request)
         {
             string? testData = JsonConvert.SerializeObject(request);
-            Console.WriteLine(testData);
+            Console.WriteLine($"CreateRoomController:{testData}");
 
             ApiResponse.CreateRoom response = await CreateRoom(request.RoomName!, request.UserName!);
             string? jsonData = JsonConvert.SerializeObject(response);
@@ -247,7 +247,7 @@ namespace server
         public async Task<IActionResult> Post([FromBody] ApiRequest.JoinRoom request)
         {
             string? testData = JsonConvert.SerializeObject(request);
-            Console.WriteLine(testData);
+            Console.WriteLine($"JoinRoomController:{testData}");
 
             ApiResponse.JoinRoom response = await JoinRoom(request.RoomNumber!, request.UserName!);
             string? jsonData = JsonConvert.SerializeObject(response);
@@ -334,7 +334,7 @@ namespace server
         public async Task<IActionResult> Post([FromBody] ApiRequest.Packet request)
         {
             string? testData = JsonConvert.SerializeObject(request);
-            Console.WriteLine(testData);
+            Console.WriteLine($"ExitRoomController:{testData}");
 
             ApiResponse.ExitRoom response = await ExitRoom(request.UserName!);
             string? jsonData = JsonConvert.SerializeObject(response);
@@ -500,7 +500,7 @@ namespace server
         public async Task<IActionResult> Post([FromBody] ApiRequest.BuyItem request)
         {
             string? testData = JsonConvert.SerializeObject(request);
-            Console.WriteLine(testData);
+            Console.WriteLine($"BuyItemController:{testData}");
 
             ApiResponse.BuyItem response = await BuyItem(request.ItemId!, request.UserName!);
             string? jsonData = JsonConvert.SerializeObject(response);

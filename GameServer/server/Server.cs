@@ -89,7 +89,13 @@ namespace server
                         userName = packet!.UserName!;
                         if (!users.ContainsKey(userName)) break;
                         var user = users[userName];
-                        if (user.Client == null) user.Client = client;
+                        if (packet!.Opcode == (int)Opcode.JoinGame)
+                        {
+                            var clients = ServerManager.GetInstance().Clients;
+                            clients.TryAdd(userName, client);
+                            Console.WriteLine($"클라이언트 추가::[{userName}]");
+
+                        }
                         if (packet!.Opcode == (int)Opcode.Logout)
                         {
                             userName = JsonConvert.DeserializeObject<string>(packet.UserName!)!;
@@ -100,7 +106,7 @@ namespace server
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"예외 발생: {ex.Message}");
+                Console.WriteLine($"[HandleTcpClientAsync] 예외 발생: {ex.Message}");
             }
             finally
             {
@@ -137,6 +143,8 @@ namespace server
                 if (!messages!.IsEmpty && messages.TryDequeue(out var message))
                 {
                     var readMessage = new ReadMessages();
+                    var messageString = JsonConvert.SerializeObject(message);
+                    Console.WriteLine($"SendMessages::\nㄴMessage{messageString}");
                     var clients = await readMessage.GetUserClients(message!);
                     await SendMessage(clients!, message);
                 }
@@ -155,14 +163,23 @@ namespace server
                     var token = ServerManager.GetInstance().Token;
 
                     string sendMessage = JsonConvert.SerializeObject(message);
-                    byte[] sendBuffer = Encoding.UTF8.GetBytes(sendMessage);
+                    byte[] dataBytes = Encoding.UTF8.GetBytes(sendMessage);
 
-                    await stream.WriteAsync(sendBuffer, 0, sendBuffer.Length, token);
+                    // 데이터의 길이를 구하고 전송
+                    int sendDataLength = dataBytes.Length;
+                    byte[] byteLength = BitConverter.GetBytes(sendDataLength);
+
+                    //-- 데이터 크기 전송
+                    await stream.WriteAsync(byteLength, 0, byteLength.Length, token);
+                    //-- 실제 데이터 전송
+                    await stream.WriteAsync(dataBytes, 0, dataBytes.Length, token);
                 }
                 catch (Exception ex)
                 {
-                    Console.WriteLine($"예외 발생: {ex.Message}");
+                    Console.WriteLine($"[SendMessage] 예외 발생: {ex.Message}");
                 }
+
+
             }
 
         }

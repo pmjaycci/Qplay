@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "dgSpecHash": "K7FuSvJ2JKo2tqZMPZ32CbUwIq2iWxZl7466Uu9Cr8GndWxN2rpxukgIMtOA7i/sfSr5mDfsPzLg9dHUUdSONQ==",
+  "dgSpecHash": "XrATLoZfEWehgxzoExpcT4HyAbsZIr19wOpAWW7VTTjGfwio20ghrFsLJaAubPWeFMDmkZ9TJPBk++ai5i5mRg==",
   "success": true,
   "projectFilePath": "/Users/jaycci/projects/Qplay/LoginServer/LoginServer.csproj",
   "expectedPackageFiles": [
@@ -9,7 +9,10 @@
     "/Users/jaycci/.nuget/packages/k4os.compression.lz4/1.3.5/k4os.compression.lz4.1.3.5.nupkg.sha512",
     "/Users/jaycci/.nuget/packages/k4os.compression.lz4.streams/1.3.5/k4os.compression.lz4.streams.1.3.5.nupkg.sha512",
     "/Users/jaycci/.nuget/packages/k4os.hash.xxhash/1.0.8/k4os.hash.xxhash.1.0.8.nupkg.sha512",
+    "/Users/jaycci/.nuget/packages/messagepack/2.5.140/messagepack.2.5.140.nupkg.sha512",
+    "/Users/jaycci/.nuget/packages/messagepack.annotations/2.5.140/messagepack.annotations.2.5.140.nupkg.sha512",
     "/Users/jaycci/.nuget/packages/microsoft.extensions.apidescription.server/6.0.5/microsoft.extensions.apidescription.server.6.0.5.nupkg.sha512",
+    "/Users/jaycci/.nuget/packages/microsoft.net.stringtools/17.6.3/microsoft.net.stringtools.17.6.3.nupkg.sha512",
     "/Users/jaycci/.nuget/packages/microsoft.netcore.platforms/3.1.0/microsoft.netcore.platforms.3.1.0.nupkg.sha512",
     "/Users/jaycci/.nuget/packages/microsoft.netcore.targets/1.1.0/microsoft.netcore.targets.1.1.0.nupkg.sha512",
     "/Users/jaycci/.nuget/packages/microsoft.openapi/1.2.3/microsoft.openapi.1.2.3.nupkg.sha512",
@@ -26,6 +29,7 @@
     "/Users/jaycci/.nuget/packages/system.drawing.common/4.7.0/system.drawing.common.4.7.0.nupkg.sha512",
     "/Users/jaycci/.nuget/packages/system.io/4.3.0/system.io.4.3.0.nupkg.sha512",
     "/Users/jaycci/.nuget/packages/system.io.pipelines/6.0.3/system.io.pipelines.6.0.3.nupkg.sha512",
+    "/Users/jaycci/.nuget/packages/system.memory/4.5.5/system.memory.4.5.5.nupkg.sha512",
     "/Users/jaycci/.nuget/packages/system.reflection/4.3.0/system.reflection.4.3.0.nupkg.sha512",
     "/Users/jaycci/.nuget/packages/system.reflection.primitives/4.3.0/system.reflection.primitives.4.3.0.nupkg.sha512",
     "/Users/jaycci/.nuget/packages/system.runtime/4.3.0/system.runtime.4.3.0.nupkg.sha512",

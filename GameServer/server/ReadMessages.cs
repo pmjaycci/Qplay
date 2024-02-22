@@ -6,227 +6,94 @@ using Util;
 
 namespace server
 {
-    public class ChatReadMessages
+    public class ReadMessages
     {
-        #region Singleton
-        private static ChatReadMessages? instance;
-        ChatReadMessages() { }
-
-        public static ChatReadMessages GetInstance()
-        {
-            if (instance == null)
-            {
-                instance = new ChatReadMessages();
-            }
-            return instance;
-
-        }
-        #endregion
-        //-- 클라이언트 메시지 응답 처리
-        public async Task ReadMessage(TcpClient client, ChatBase.Packet request)
-        {
-            int opcode = request!.Opcode;
-            await Task.Run(() =>
-            {
-                switch (opcode)
-                {
-                    case (int)Opcode.JoinGame:
-                        {
-                            var joinGame = JsonConvert.DeserializeObject<ChatRequest.JoinGame>(request.Message!);
-                            var userName = joinGame!.UserName!;
-
-                            var clients = ServerManager.GetInstance().Clients;
-
-                            var connectUsers = "";
-                            if (clients.Count > 0)
-                            {
-                                foreach (var t in clients)
-                                {
-                                    connectUsers += $"[{t.Key}]";
-                                }
-                            }
-                            else
-                            {
-                                connectUsers = "[없음]";
-                            }
-                            Console.WriteLine($"현재 접속중인 유저\n{connectUsers}");
-
-                            if (!clients.ContainsKey(userName!))
-                            {
-                                clients.TryAdd(userName!, client);
-                            }
-                            else
-                            {
-                                clients[userName!] = client;
-                            }
-
-
-                        }
-                        break;
-                    case (int)Opcode.Chat:
-                        {
-                            var packet = JsonConvert.DeserializeObject<ChatBase.Chat>(request.Message!);
-                            var userName = packet!.UserName!;
-                            var messages = ServerManager.GetInstance().ChatMessages;
-                            messages!.Enqueue(request);
-                            //-- 메시지가 도착할 때마다 SemaphoreSlim을 Release하여 대기 상태에서 깨움
-                            ServerManager.GetInstance().ChatSemaphore.Release();
-                        }
-                        break;
-                    default:
-                        {
-
-                            break;
-                        }
-                }
-            });
-            return;
-
-        }
-
-
         //-- 호출 유저 상태에 따른 메시지 전달받을 유저 클라이언트 가져오기
-        public async Task<ConcurrentQueue<TcpClient>> GetUserClients(ChatBase.Packet request)
+        public async Task<ConcurrentQueue<TcpClient>> GetUserClients(ServerPacket.Packet request)
         {
             var result = new ConcurrentQueue<TcpClient>();
-            var clients = ServerManager.GetInstance().Clients;
             var users = ServerManager.GetInstance().Users;
             var userNames = new List<string>();
             await Task.Run(() =>
             {
                 switch (request.Opcode)
                 {
-                    case (int)Opcode.Chat:
-                        {
-                            var packet = JsonConvert.DeserializeObject<ChatBase.Chat>(request.Message!);
-                            var chatUser = users[packet!.UserName!];
-                            foreach (var user in users)
-                            {
-                                //-- 전달받을 유저의 클라이언트가 없을경우
-                                var currentUserName = user.Key;
-                                var currentUser = user.Value;
-                                if (!clients.ContainsKey(currentUserName)) continue;
-
-                                int userState = currentUser.State;
-                                //-- 호출한 유저의 상태와 동일한 상태를 가진 유저인지?
-                                if (userState == chatUser.State)
-                                {
-                                    switch (userState)
-                                    {
-                                        case (int)UserState.Room:
-                                            int roomNumber = user.Value.RoomNumber;
-                                            if (roomNumber == chatUser.RoomNumber)
-                                            {
-                                                result.Enqueue(clients[currentUserName]);
-                                                userNames.Add(currentUserName);
-                                            }
-                                            break;
-                                        default:
-                                            result.Enqueue(clients[currentUserName]);
-                                            userNames.Add(currentUserName);
-                                            break;
-                                    }
-                                }
-                            }
-                        }
-
-                        break;
-                    case (int)Opcode.AddUserLobbyMember: //-- 본인을 제외한 로비에 위치한 유저들 가져옴
-                        {
-                            var packet = JsonConvert.DeserializeObject<ChatBase.AddUserLobbyMember>(request.Message!);
-                            foreach (var user in users)
-                            {
-                                var currentUser = user.Value;
-
-                                //-- 전달받을 유저의 클라이언트가 없을경우
-                                if (!clients.ContainsKey(user.Key)) continue;
-                                if (user.Value.UserName == packet!.UserName) continue;
-                                if (user.Value.State != (int)UserState.Lobby) continue;
-
-                                result.Enqueue(clients[user.Value.UserName!]);
-                                userNames.Add(user.Value.UserName!);
-                            }
-                        }
-                        break;
                     case (int)Opcode.AddChatRoomLobbyMember: //-- 본인을 제외한 로비에 위치한 유저들 가져옴
                         {
-                            var packet = JsonConvert.DeserializeObject<ChatBase.AddChatRoomLobbyMember>(request.Message!);
-                            foreach (var user in users)
+                            var packet = JsonConvert.DeserializeObject<ServerPacket.AddChatRoomLobbyMember>(request.Message!);
+                            foreach (var user in users.Values)
                             {
-                                var currentUser = user.Value;
-
-                                //-- 전달받을 유저의 클라이언트가 없을경우
-                                if (!clients.ContainsKey(user.Key)) continue;
-                                if (user.Value.UserName == packet!.UserName) continue;
-                                if (user.Value.State != (int)UserState.Lobby) continue;
-                                result.Enqueue(clients[user.Value.UserName!]);
-                                userNames.Add(user.Value.UserName!);
+                                var client = user.Client;
+                                if (user.Client == null) continue;
+                                if (user.UserName == packet!.UserName) continue;
+                                if (user.State != (int)UserState.Lobby) continue;
+                                result.Enqueue(client!);
+                                userNames.Add(user.UserName!);
 
                             }
                         }
                         break;
                     case (int)Opcode.RoomLobbyMember:
                         {
-                            var packet = JsonConvert.DeserializeObject<ChatBase.RoomLobbyMember>(request.Message!);
-                            foreach (var user in users)
+                            var packet = JsonConvert.DeserializeObject<ServerPacket.RoomLobbyMember>(request.Message!);
+                            foreach (var user in users.Values)
                             {
-                                var currentUser = user.Value;
-
                                 //-- 전달받을 유저의 클라이언트가 없을경우
-                                if (!clients.ContainsKey(user.Key)) continue;
-                                if (user.Value.UserName == packet!.UserName) continue;
-                                if (user.Value.State != (int)UserState.Lobby) continue;
-                                result.Enqueue(clients[user.Value.UserName!]);
-                                userNames.Add(user.Value.UserName!);
+                                var client = user.Client;
+                                if (user.Client == null) continue;
+                                if (user.UserName == packet!.UserName) continue;
+                                if (user.State != (int)UserState.Lobby) continue;
+                                result.Enqueue(client!);
+                                userNames.Add(user.UserName!);
                             }
                         }
                         break;
                     case (int)Opcode.LobbyMember:
                         {
-                            var packet = JsonConvert.DeserializeObject<ChatBase.LobbyMember>(request.Message!);
-                            foreach (var user in users)
+                            var packet = JsonConvert.DeserializeObject<ServerPacket.LobbyMember>(request.Message!);
+                            foreach (var user in users.Values)
                             {
-                                var currentUser = user.Value;
-
                                 //-- 전달받을 유저의 클라이언트가 없을경우
-                                if (!clients.ContainsKey(user.Key)) continue;
-                                if (user.Value.UserName == packet!.UserName) continue;
-                                if (user.Value.State != (int)UserState.Lobby) continue;
-                                result.Enqueue(clients[user.Value.UserName!]);
-                                userNames.Add(user.Value.UserName!);
+                                var client = user.Client;
+                                if (user.Client == null) continue;
+                                if (user.UserName == packet!.UserName) continue;
+                                if (user.State != (int)UserState.Lobby) continue;
+                                result.Enqueue(client!);
+                                userNames.Add(user.UserName!);
                             }
                         }
                         break;
                     case (int)Opcode.JoinRoomMember:
                         {
-                            var packet = JsonConvert.DeserializeObject<ChatBase.JoinRoomMember>(request.Message!);
+                            var packet = JsonConvert.DeserializeObject<ServerPacket.JoinRoomMember>(request.Message!);
                             var joinUser = users[packet!.UserName!];
-                            foreach (var user in users)
+                            foreach (var user in users.Values)
                             {
-                                var roomUser = user.Value;
                                 //-- 전달받을 유저의 클라이언트가 없을경우
-                                if (!clients.ContainsKey(user.Key)) continue;
-                                if (roomUser.UserName == packet!.UserName) continue;
-                                if (roomUser.State == (int)UserState.Room && roomUser.RoomNumber == joinUser.RoomNumber)
+                                var client = user.Client;
+                                if (user.Client == null) continue;
+                                if (user.UserName == packet!.UserName) continue;
+                                if (user.State == (int)UserState.Room && user.RoomNumber == joinUser.RoomNumber)
                                 {
-                                    result.Enqueue(clients[user.Value.UserName!]);
-                                    userNames.Add(user.Value.UserName!);
+                                    result.Enqueue(client!);
+                                    userNames.Add(user.UserName!);
                                 }
                             }
                         }
                         break;
                     case (int)Opcode.ExitRoomMember:
                         {
-                            var packet = JsonConvert.DeserializeObject<ChatBase.ExitRoomMember>(request.Message!);
-                            foreach (var user in users)
+                            var packet = JsonConvert.DeserializeObject<ServerPacket.ExitRoomMember>(request.Message!);
+                            foreach (var user in users.Values)
                             {
                                 //-- 전달받을 유저의 클라이언트가 없을경우
-                                if (!clients.ContainsKey(user.Key)) continue;
-                                if (user.Value.UserName == packet!.UserName) continue;
-                                if (user.Value.State == (int)UserState.Room && user.Value.RoomNumber == packet.RoomNumber)
+                                var client = user.Client;
+                                if (user.Client == null) continue;
+                                if (user.UserName == packet!.UserName) continue;
+                                if (user.State == (int)UserState.Room && user.RoomNumber == packet.RoomNumber)
                                 {
-                                    result.Enqueue(clients[user.Value.UserName!]);
-                                    userNames.Add(user.Value.UserName!);
+                                    result.Enqueue(client!);
+                                    userNames.Add(user.UserName!);
                                 }
                             }
                         }

@@ -38,7 +38,7 @@ namespace server
         public ConcurrentDictionary<string, User> Users = new ConcurrentDictionary<string, User>();
         //-- 생성된 채팅방 정보 캐싱 : 방 제목, 방장 이름, 입장 유저 정보
         public ConcurrentDictionary<int, Room> Rooms = new ConcurrentDictionary<int, Room>();
-        public ConcurrentQueue<ChatBase.Packet>? ChatMessages = new ConcurrentQueue<ChatBase.Packet>();
+        public ConcurrentQueue<ServerPacket.Packet>? ChatMessages = new ConcurrentQueue<ServerPacket.Packet>();
         public SemaphoreSlim ChatSemaphore = new SemaphoreSlim(0);  // SemaphoreSlim을 사용하여 대기 상태 관리
 
         #region Http Server
@@ -63,7 +63,7 @@ namespace server
 
         #region Tcp Server
         //-- 연결된 클라이언트 정보 캐싱 : 유저 명, 클라이언트
-        public ConcurrentDictionary<string, TcpClient> Clients = new ConcurrentDictionary<string, TcpClient>();
+        //public ConcurrentDictionary<string, TcpClient> Clients = new ConcurrentDictionary<string, TcpClient>();
 
 
 

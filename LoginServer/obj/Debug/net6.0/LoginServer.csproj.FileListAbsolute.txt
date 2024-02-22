@@ -54,3 +54,6 @@
 /Users/jaycci/projects/Qplay/LoginServer/obj/Debug/net6.0/ref/LoginServer.dll
 /Users/jaycci/projects/Qplay/LoginServer/obj/Debug/net6.0/LoginServer.pdb
 /Users/jaycci/projects/Qplay/LoginServer/obj/Debug/net6.0/LoginServer.genruntimeconfig.cache
+/Users/jaycci/projects/Qplay/LoginServer/bin/Debug/net6.0/MessagePack.dll
+/Users/jaycci/projects/Qplay/LoginServer/bin/Debug/net6.0/MessagePack.Annotations.dll
+/Users/jaycci/projects/Qplay/LoginServer/bin/Debug/net6.0/Microsoft.NET.StringTools.dll

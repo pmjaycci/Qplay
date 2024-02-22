@@ -16,8 +16,8 @@ public class Database
     private Database()
     {
         // 연결 문자열에 커넥션 풀링을 사용하도록 설정
-        var userDatabaseUrl = "Server=13.125.254.231;Port=3306;Database=user_db;Uid=root;Pwd=jaycci1@;Pooling=true; KeepAlive = 3600";
-        var tableDatabaseUrl = "Server=13.125.254.231;Port=3306;Database=table_db;Uid=root;Pwd=jaycci1@;Pooling=true; KeepAliver = 3600";
+        var userDatabaseUrl = "Server=13.125.254.231;Port=3306;Database=user_db;Uid=root;Pwd=jaycci1@;Pooling=true;";
+        var tableDatabaseUrl = "Server=13.125.254.231;Port=3306;Database=table_db;Uid=root;Pwd=jaycci1@;Pooling=true;";
 
         // MySqlConnection 대신 IDbConnection 인터페이스를 사용하여 다른 데이터베이스에도 유연하게 대응할 수 있습니다.
         UserDB = new MySqlConnection(userDatabaseUrl);

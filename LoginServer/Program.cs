@@ -51,6 +51,6 @@ public class Program
         Database.GetInstance().DatabaseConnect((int)DB.TableDB);
         await Database.GetInstance().LoadTableDatabase();
 
-        app.Run(); //"http://localhost:5000");
+        app.Run("http://localhost:8000");
     }
 }

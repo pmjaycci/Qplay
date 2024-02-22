@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using System.Net.Sockets;
 
 namespace Table
 {
@@ -16,6 +17,7 @@ namespace GameInfo
 {
     public class User
     {
+        public TcpClient? Client { get; set; }
         public int State { get; set; }
         public int RoomNumber { get; set; }
         public int SlotNumber { get; set; }
@@ -41,24 +43,6 @@ namespace GameInfo
         public int Model { get; set; }
         public List<int>? Items { get; set; }
     }
-    /*
-    public class JoinRoomInfo
-    {
-        public int CurrentMember { get; set; }
-        public string? RoomName { get; set; }
-        public string? OwnerName { get; set; }
-        //public ConcurrentDictionary<int, JoinRoomUserInfo>? JoinRoomUsersInfo { get; set; }
-    }
-    public class JoinRoomUserInfo
-    {
-        public string? UserName { get; set; }
-        public int Gender { get; set; }
-        public int Model { get; set; }
-        public ConcurrentBag<int>? EquipItems { get; set; }
-    }
-    
-
-    */
     public class Room
     {
         public int RoomNumber { get; set; }
@@ -81,9 +65,7 @@ namespace Util
 
     enum Opcode
     {
-        Message, //-- 기본 응답 (서버->클라이언트 Tcp메시지 호출 응답용)
         JoinGame, //-- 게임 접속 (서버<->클라이언트)
-        Chat, //-- 채팅 (서버<->클라이언트)
         AddUserLobbyMember,
         AddChatRoomLobbyMember,
         RoomLobbyMember,
@@ -92,22 +74,6 @@ namespace Util
         ExitRoomMember,
         Logout,
     }
-    enum RequestHeader
-    {
-        JoinGame,
-        CreateRoom,
-        JoinRoom,
-        ExitRoom,
-        SceneChange,
-        BuyItem,
-        EquipItems
-    }
-    enum ChatType
-    {
-        Notice,
-        All
-    }
-
 
     enum UserState
     {

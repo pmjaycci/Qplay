@@ -1,5 +1,6 @@
 ﻿using Util;
 using server;
+using ZstdNet;
 
 class Program
 {
@@ -18,16 +19,12 @@ class Program
         //-- DB테이블 캐싱
         await Database.GetInstance().LoadTableDatabase();
 
-        WebServer webServer = new WebServer();
-        Task httpTask = webServer.RunHttpServer(cts.Token);
+        ApiServer apiServer = new ApiServer();
+        var api = Task.Run(() => apiServer.RunHttpServer(cts.Token));
 
-        Server chatServer = new Server();
-        Task tcpTask = chatServer.RunTcpServer(cts.Token);
-
-        // 모든 작업이 완료될 때까지 대기
-        await Task.WhenAll(httpTask, tcpTask);
-
-        //Console.ReadLine(); // 프로그램 종료 방지용
+        Server gameServer = new Server();
+        var game = Task.Run(() => gameServer.RunTcpServer(cts.Token));
+        Task.WaitAll(game, api);
         cts.Cancel();
     }
 }

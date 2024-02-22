@@ -1,9 +1,8 @@
-using System.Configuration;
+
+using System.Collections.Concurrent;
 using System.Text;
 using Microsoft.AspNetCore.Mvc;
 using Newtonsoft.Json;
-using Org.BouncyCastle.Asn1.X509;
-using Request;
 using Util;
 namespace LoginApi
 {
@@ -57,6 +56,7 @@ namespace LoginApi
                 response.Gender = Convert.ToInt32(result["gender"]);
                 response.Model = Convert.ToInt32(result["model"]);
                 response.Money = Convert.ToInt32(result["money"]);
+                response.Items = new Dictionary<int, bool>();
                 bool isItemNull = result.IsDBNull(result.GetOrdinal("item_id"));
                 if (!isItemNull)
                 {
@@ -65,14 +65,27 @@ namespace LoginApi
                     response.Items![itemId] = isEquip;
                 }
             }
-
             response.State = (int)UserState.Lobby;
             response.RoomNumber = -1;
             response.SlotNumber = -1;
             response.UserName = request.Id;
 
             var gameServer = new GameServer();
-            var message = await gameServer.RequestLogin(response);
+            var loginGameServerPacket = new Request.LoginGameServer();
+            loginGameServerPacket!.UserName = response.UserName;
+            loginGameServerPacket.State = response.State;
+            loginGameServerPacket.RoomNumber = response.RoomNumber;
+            loginGameServerPacket.SlotNumber = response.SlotNumber;
+            loginGameServerPacket.Gender = response.Gender;
+            loginGameServerPacket.Model = response.Model;
+            loginGameServerPacket.Money = response.Money;
+            loginGameServerPacket.Items = new ConcurrentDictionary<int, bool>();
+
+            foreach (var item in response.Items!)
+            {
+                loginGameServerPacket.Items.TryAdd(item.Key, item.Value);
+            }
+            var message = await gameServer.RequestLogin(loginGameServerPacket);
             response.MessageCode = message.MessageCode;
             response.Message = message.Message;
             result.Close();
@@ -81,42 +94,7 @@ namespace LoginApi
 
 
     }
-    public class GameServer
-    {
-        public async Task<Response.Packet> RequestLogin(Response.Login login)
-        {
-            // 대상 서버의 URL
-            string url = "http://localhost:8080/login";
 
-            // POST 요청에 보낼 데이터
-            string message = JsonConvert.SerializeObject(login);
-
-            // HTTP 클라이언트 생성
-            using (HttpClient httpClient = new HttpClient())
-            {
-                // HTTP 요청 생성
-                HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Post, url);
-                request!.Content = new StringContent(message, Encoding.UTF8, "application/x-www-form-urlencoded");
-                request.Headers.Add("MessageType", ((int)RequestHeader.JoinGame).ToString());
-
-                // HTTP 요청 보내기
-                HttpResponseMessage response = await httpClient.SendAsync(request);
-
-                // 응답 처리
-                if (response.IsSuccessStatusCode)
-                {
-                    string responseBody = await response.Content.ReadAsStringAsync();
-                    var packet = JsonConvert.DeserializeObject<Response.Packet>(responseBody);
-                    return packet!;
-                }
-                else
-                {
-                    Console.WriteLine("오류 응답 코드: " + response.StatusCode);
-                    return null!;
-                }
-            }
-        }
-    }
 
     [ApiController]
     [Route("api/[controller]")]
@@ -125,7 +103,6 @@ namespace LoginApi
         [HttpPost]
         public IActionResult Post([FromBody] Request.LoadTable request)
         {
-
             Response.LoadTable response = LoadTable(request);
             string? jsonData = JsonConvert.SerializeObject(response);
             return Ok(jsonData);
@@ -148,6 +125,46 @@ namespace LoginApi
             response.ItemTable = Database.GetInstance().ItemTable;
 
             return response;
+        }
+    }
+
+
+
+
+    public class GameServer
+    {
+        public async Task<Response.Packet> RequestLogin(Request.LoginGameServer login)
+        {
+            // 대상 서버의 URL
+            string url = "http://localhost:8070/api/login";
+
+            // POST 요청에 보낼 데이터
+            string message = JsonConvert.SerializeObject(login);
+            Console.WriteLine("TEST:" + message);
+            // HTTP 클라이언트 생성
+            using (HttpClient httpClient = new HttpClient())
+            {
+                // HTTP 요청 생성
+                HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Post, url);
+                request!.Content = new StringContent(message, Encoding.UTF8, "application/json");
+                //request.Headers.Add("MessageType", ((int)RequestHeader.JoinGame).ToString());
+
+                // HTTP 요청 보내기
+                HttpResponseMessage response = await httpClient.SendAsync(request);
+
+                // 응답 처리
+                if (response.IsSuccessStatusCode)
+                {
+                    string responseBody = await response.Content.ReadAsStringAsync();
+                    var packet = JsonConvert.DeserializeObject<Response.Packet>(responseBody);
+                    return packet!;
+                }
+                else
+                {
+                    Console.WriteLine("오류 응답 코드: " + response.StatusCode);
+                    return null!;
+                }
+            }
         }
     }
 

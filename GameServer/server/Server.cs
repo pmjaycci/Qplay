@@ -3,14 +3,16 @@ using System.Formats.Asn1;
 using System.Net;
 using System.Net.Sockets;
 using System.Text;
+using Microsoft.AspNetCore.Mvc;
 using Newtonsoft.Json;
 using Util;
+using ZstdNet;
 
 namespace server
 {
     public class Server
     {
-        public async Task RunTcpServer(CancellationToken cancellationToken)
+        public void RunTcpServer(CancellationToken cancellationToken)
         {
             string ip = "0.0.0.0"; // 모든 네트워크 인터페이스에 바인딩
             int port = 8080;
@@ -22,16 +24,14 @@ namespace server
             Console.WriteLine("----------------------------------------------------------");
 
             //-- 클라이언트로부터 들어온 메세지 처리
-            var listenChatMessages = ListenChatMessages(tcpListener, cancellationToken);
+            var connect = Task.Run(() => ConnectClients(tcpListener, cancellationToken));
             //-- 보내야될 메세지들을 처리
-            var sendChatMessage = SendChatMessages(cancellationToken);
-
-            await Task.WhenAll(listenChatMessages, sendChatMessage);
-
+            var sendMessages = Task.Run(() => SendMessages(cancellationToken));
+            Task.WaitAll(connect, sendMessages);
         }
 
         //-- 채팅서버 클라이언트 요청 대기
-        private static async Task ListenChatMessages(TcpListener tcpListener, CancellationToken cancellationToken)
+        private static async Task ConnectClients(TcpListener tcpListener, CancellationToken cancellationToken)
         {
             try
             {
@@ -69,26 +69,32 @@ namespace server
 
                 //-- 호출 들어온 유저의 스트림
                 NetworkStream stream = client.GetStream();
-                byte[] buffer = new byte[1024];
+                byte[] lengthBytes = new byte[4];
+
                 while (!cancellationToken.IsCancellationRequested)
                 {
+                    // 데이터의 길이를 읽음
+                    await stream.ReadAsync(lengthBytes, 0, 4);
+                    int dataLength = BitConverter.ToInt32(lengthBytes, 0);
+                    // 실제 데이터를 읽음
+                    byte[] buffer = new byte[dataLength];
+                    int bytesRead = await stream.ReadAsync(buffer, 0, dataLength, cancellationToken);
                     //-- 유저 메시지 읽기
-                    int bytesRead = await stream.ReadAsync(buffer, 0, buffer.Length, cancellationToken);
 
                     if (bytesRead > 0)
                     {
                         string request = Encoding.UTF8.GetString(buffer, 0, bytesRead);
-                        Console.WriteLine(request);
-                        var packet = JsonConvert.DeserializeObject<ChatBase.Packet>(request);
+                        var packet = JsonConvert.DeserializeObject<ClientPacket.Packet>(request);
+                        var users = ServerManager.GetInstance().Users;
+                        userName = packet!.UserName!;
+                        if (!users.ContainsKey(userName)) break;
+                        var user = users[userName];
+                        if (user.Client == null) user.Client = client;
                         if (packet!.Opcode == (int)Opcode.Logout)
                         {
-                            userName = JsonConvert.DeserializeObject<string>(packet.Message!)!;
+                            userName = JsonConvert.DeserializeObject<string>(packet.UserName!)!;
                             break;
                         }
-
-                        //-- 메시지 체크후 반환된 Opcode값에 따라 타 유저에게 메시지 전달해야되는 메시지의 경우 Queue에 담아 비동기로 처리
-                        _ = Task.Run(() => ChatReadMessages.GetInstance().ReadMessage(client, packet!));
-
                     }
                 }
             }
@@ -99,19 +105,19 @@ namespace server
             finally
             {
                 var serverManager = ServerManager.GetInstance();
-                var clients = serverManager.Clients;
                 var users = serverManager.Users;
-
-                if (clients.ContainsKey(userName))
+                /*
+                foreach (var user in users.Values)
                 {
-                    client.Close();
-                    clients.TryRemove(userName, out client!);
-                    Console.WriteLine($"유저 로그아웃! 정보 제거: {userName}");
+                    if (user.UserName == userName) continue;
+
                 }
+                */
                 if (users.ContainsKey(userName))
                 {
-                    var api = WebReadMessages.GetInstance();
-                    var response = await api.ExitRoom(userName, (int)Opcode.Logout);
+                    client.Close();
+                    users.TryRemove(userName!, out _);
+                    Console.WriteLine($"유저 로그아웃! 정보 제거: {userName}");
                 }
 
                 Console.WriteLine($"TCP 클라이언트 연결 해제됨: {ip}:{port}");
@@ -119,24 +125,25 @@ namespace server
         }
 
 
-        private async Task SendChatMessages(CancellationToken cancellationToken)
+        private async Task SendMessages(CancellationToken cancellationToken)
         {
             while (!cancellationToken.IsCancellationRequested)
             {
                 // SemaphoreSlim의 WaitAsync를 사용하여 대기
                 var semaphore = ServerManager.GetInstance().ChatSemaphore;
-                Console.WriteLine("SendChatMessages:: 메시지 대기중");
+                Console.WriteLine("SendMessages:: 메시지 대기중");
                 await semaphore.WaitAsync();
                 var messages = ServerManager.GetInstance().ChatMessages;
                 if (!messages!.IsEmpty && messages.TryDequeue(out var message))
                 {
-                    var clients = await ChatReadMessages.GetInstance().GetUserClients(message!);
-                    await SendChatMessage(clients!, message);
+                    var readMessage = new ReadMessages();
+                    var clients = await readMessage.GetUserClients(message!);
+                    await SendMessage(clients!, message);
                 }
             }
         }
 
-        private async Task SendChatMessage(ConcurrentQueue<TcpClient> clients, ChatBase.Packet message)
+        private async Task SendMessage(ConcurrentQueue<TcpClient> clients, ServerPacket.Packet message)
         {
             while (clients.TryDequeue(out var client))
             {

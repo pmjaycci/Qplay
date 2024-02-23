@@ -134,7 +134,7 @@ namespace server
             _ = Task.Run(() => sendMessage.AddUserLobbyMember(joinUser));
 
             var test = JsonConvert.SerializeObject(response);
-            Console.WriteLine(test);
+            Console.WriteLine($"JoinGameController:JoinGame:{test}");
             return response;
         }
 
@@ -166,7 +166,7 @@ namespace server
                 var message = $"WebReadMessages.CreateRoom Error!! {userName} KeyNotFound";
                 response.MessageCode = (int)MessageCode.Fail;
                 response.Message = message;
-                Console.WriteLine(message);
+                Console.WriteLine($"CreateRoomController:CreateRoom:{message}");
                 return response;
             }
 
@@ -182,7 +182,7 @@ namespace server
                 if (rooms[i].CurrentMember == 0)
                 {
                     idx = i;
-                    Console.WriteLine($"생성 가능 방번호 {i}");
+                    Console.WriteLine($"CreateRoomController:CreateRoom:생성 가능 방번호 [{i}]");
 
                     break;
                 }
@@ -193,7 +193,7 @@ namespace server
             {
                 response.MessageCode = (int)MessageCode.Fail;
                 response.Message = "생성 가능한 방이 없습니다.";
-                Console.WriteLine(response.Message);
+                Console.WriteLine($"CreateRoomController:CreateRoom:{response.Message}");
                 return response;
             }
 
@@ -232,7 +232,7 @@ namespace server
                 if (test.Value.RoomName == null) continue;
                 count++;
             }
-            Console.WriteLine($"CreatedRoom:: 현재 생성된 방의 갯수: {count}");
+            Console.WriteLine($"CreateRoomController: CreateRoom:현재 생성된 방의 갯수 [{count}]");
 
             return response;
         }
@@ -263,7 +263,7 @@ namespace server
                 var message = $"WebReadMessages.JoinRoom Error!! {userName} KeyNotFound";
                 response.MessageCode = (int)MessageCode.Fail;
                 response.Message = message;
-                Console.WriteLine(message);
+                Console.WriteLine($"JoinRoomController:JoinRoom:{message}");
                 return response;
             }
             var user = serverManager.Users[userName];
@@ -350,7 +350,7 @@ namespace server
                 var message = $"WebReadMessages.ExitRoom Error!! {userName} KeyNotFound";
                 response.MessageCode = (int)MessageCode.Fail;
                 response.Message = message;
-                Console.WriteLine(message);
+                Console.WriteLine($"ExitRoomController:ExitRoom:{message}");
                 return response;
             }
 
@@ -470,7 +470,7 @@ namespace server
                 var message = $"WebReadMessages.SceneChange Error!! {userName} KeyNotFound";
                 response.MessageCode = (int)MessageCode.Fail;
                 response.Message = message;
-                Console.WriteLine(message);
+                Console.WriteLine($"SceneChangeController:SceneChange:{message}");
                 return response;
             }
             var user = users[userName];
@@ -516,7 +516,7 @@ namespace server
                 var message = $"WebReadMessages.BuyItem Error!! {userName} KeyNotFound";
                 response.MessageCode = (int)MessageCode.Fail;
                 response.Message = message;
-                Console.WriteLine(message);
+                Console.WriteLine($"BuyItemController:BuyItem:{message}");
                 return response;
             }
             var user = serverManager.Users[userName];
@@ -584,7 +584,7 @@ namespace server
         public async Task<IActionResult> Post([FromBody] ApiRequest.EquipItems request)
         {
             string? testData = JsonConvert.SerializeObject(request);
-            Console.WriteLine(testData);
+            Console.WriteLine($"EquipItemsController:{testData}");
 
             ApiResponse.EquipItems response = await EquipItems(request.Items!, request.UserName!);
             string? jsonData = JsonConvert.SerializeObject(response);
@@ -599,7 +599,7 @@ namespace server
                 var message = $"WebReadMessages.EquipItems Error!! {userName} KeyNotFound";
                 response.MessageCode = (int)MessageCode.Fail;
                 response.Message = message;
-                Console.WriteLine(message);
+                Console.WriteLine($"EquipItemsController:EquipItem:{message}");
                 return response;
             }
             response!.Items = new Dictionary<int, bool>();
@@ -674,6 +674,7 @@ namespace server
         public async Task RoomLobbyMember(string userName, int state, int roomNumber, int currentMember)
         {
             var messages = ServerManager.GetInstance().ChatMessages;
+            Console.WriteLine($"ApiSendMessage:RoomLobbyMember:[{userName}/State[{state}]]");
             await Task.Run(() =>
             {
                 var packet = new ServerPacket.RoomLobbyMember();
@@ -693,6 +694,7 @@ namespace server
         }
         public async Task AddChatRoomLobbyMember(User user)
         {
+            Console.WriteLine($"ApiSendMessage:AddChatRoomLobbyMember:[{user.UserName}/State[{user.State}]]");
             await Task.Run(() =>
             {
                 var packet = new ServerPacket.AddChatRoomLobbyMember();
@@ -715,6 +717,8 @@ namespace server
         }
         public async Task AddUserLobbyMember(User user)
         {
+            Console.WriteLine($"ApiSendMessage:AddUserLobbyMember:[{user.UserName}/State[{user.State}]]");
+
             await Task.Run(() =>
             {
                 var packet = new ServerPacket.AddUserLobbyMember();
@@ -732,34 +736,38 @@ namespace server
             });
         }
         //-- 로비 유저들에게 변경된 유저 상태 송신
-        public async Task LobbyMember(string userName, int state)
+        public void LobbyMember(string userName, int state)
         {
+            Console.WriteLine($"ApiSendMessage:LobbyMember:[{userName}/State[{state}]]");
             var messages = ServerManager.GetInstance().ChatMessages;
-            await Task.Run(() =>
-            {
-                var packet = new ServerPacket.LobbyMember();
+            var packet = new ServerPacket.LobbyMember();
 
-                packet!.UserName = userName;
-                packet.State = state;
+            packet!.UserName = userName;
+            packet.State = state;
 
-                var message = new ServerPacket.Packet();
-                message!.Opcode = (int)Opcode.LobbyMember;
-                message.Message = JsonConvert.SerializeObject(packet);
+            var message = new ServerPacket.Packet();
+            message!.Opcode = (int)Opcode.LobbyMember;
+            message.Message = JsonConvert.SerializeObject(packet);
 
-                messages!.Enqueue(message);
-                ServerManager.GetInstance().ChatSemaphore.Release();
-            });
+            messages!.Enqueue(message);
+            Console.WriteLine($"ApiSendMessage:LobbyMember:Queue!!");
+
+
+            ServerManager.GetInstance().ChatSemaphore.Release();
+            Console.WriteLine($"ApiSendMessage:LobbyMember:Release!!");
         }
 
         public async Task JoinRoomMember(int currentMember, Character character)
         {
+            Console.WriteLine($"ApiSendMessage:JoinRoomMember:[{character.UserName}] RoomCurrentMember[{currentMember}]");
+
             var messages = ServerManager.GetInstance().ChatMessages;
             await Task.Run(() =>
             {
                 var packet = new ServerPacket.JoinRoomMember();
-                packet!.CurrentMember = currentMember;
+                packet!.UserName = character.UserName;
+                packet.CurrentMember = currentMember;
                 packet.SlotNumber = character.SlotNumber;
-                packet.UserName = character.UserName;
                 packet.Gender = character.Gender;
                 packet.Model = character.Model;
                 packet.EquipItems = character.Items;
@@ -774,6 +782,8 @@ namespace server
         }
         public async Task ExitRoomMember(int roomNumber, int slotNumber, string userName, int currentMember)
         {
+            Console.WriteLine($"ApiSendMessage:ExitRoomMember:[{userName}]");
+
             var messages = ServerManager.GetInstance().ChatMessages;
             await Task.Run(() =>
             {

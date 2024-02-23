@@ -40,6 +40,7 @@ namespace LoginApi
                 return response;
             }
 
+            response.Items = new Dictionary<int, bool>();
 
             while (result.Read())
             {
@@ -56,7 +57,6 @@ namespace LoginApi
                 response.Gender = Convert.ToInt32(result["gender"]);
                 response.Model = Convert.ToInt32(result["model"]);
                 response.Money = Convert.ToInt32(result["money"]);
-                response.Items = new Dictionary<int, bool>();
                 bool isItemNull = result.IsDBNull(result.GetOrdinal("item_id"));
                 if (!isItemNull)
                 {
@@ -83,6 +83,7 @@ namespace LoginApi
 
             foreach (var item in response.Items!)
             {
+                Console.WriteLine($"ItemId::[{item.Key}]/ isEquip [{item.Value}]");
                 loginGameServerPacket.Items.TryAdd(item.Key, item.Value);
             }
             var message = await gameServer.RequestLogin(loginGameServerPacket);

@@ -6,6 +6,7 @@ using System.Text;
 using MessagePack;
 using Newtonsoft.Json;
 using Util;
+using ZstdNet;
 namespace server
 {
     public class Server
@@ -42,6 +43,7 @@ namespace server
         {
             var ip = $"{((IPEndPoint)client.Client.RemoteEndPoint!).Address}";
             var port = $"{((IPEndPoint)client.Client.RemoteEndPoint!).Port}";
+            var UserName = "";
             try
             {
                 Console.WriteLine($"클라이언트 연결됨: {ip}:{port}");
@@ -64,11 +66,11 @@ namespace server
                     if (bytesRead > 0)
                     {
                         string request = Encoding.UTF8.GetString(buffer, 0, bytesRead);
-                        Console.WriteLine("TEST:" + request);
                         var packet = JsonConvert.DeserializeObject<Chat.Packet>(request);
 
 
                         var userName = packet!.UserName;
+                        UserName = userName;
                         var state = packet.State;
                         var roomNumber = packet.RoomNumber;
                         if (!Users.ContainsKey(userName!))
@@ -76,7 +78,6 @@ namespace server
                             var newUser = new User(client, userName!, state, roomNumber);
                             Users.TryAdd(userName!, newUser);
                             ThreadPool.QueueUserWorkItem(_ => PingCheck(Users[userName!]));
-                            Console.WriteLine("핑 체크!!");
                         }
                         if (packet!.Opcode == (int)Opcode.Ping)
                         {
@@ -91,13 +92,21 @@ namespace server
                     }
                 }
             }
+
+            catch (IOException)
+            {
+                client.Dispose();
+
+            }
             catch (Exception ex)
             {
                 Console.WriteLine($"예외 발생: {ex.Message}");
+                client.Dispose();
             }
             finally
             {
-                Console.WriteLine($"TCP 클라이언트 연결 해제됨: {ip}:{port}");
+                Users.TryRemove(UserName!, out _);
+                Console.WriteLine($"TCP 클라이언트 연결 해제됨: {ip}:{port} / Users Count [{Users.Count}]");
             }
         }
 
@@ -116,7 +125,6 @@ namespace server
                 var stream = user.Client!.GetStream();
 
                 if (user.State != chatUser.State || user.RoomNumber != chatUser.RoomNumber) continue;
-                Console.WriteLine("TEST::" + user.UserName);
                 //-- 데이터 크기 전송
                 stream.Write(byteLength, 0, byteLength.Length);
                 //-- 실제 데이터 전송
@@ -129,37 +137,44 @@ namespace server
             packet!.Opcode = (int)Opcode.Ping;
             packet.UserName = user.UserName;
             packet.Message = "PingPong";
-            Console.WriteLine("핑 체크 시작");
 
             while (true)
             {
-                user.IsAlive = false;
-                SendPing(packet, user.Client!);
+                if (user.IsAlive)
+                    SendPing(packet, user);
                 Thread.Sleep(3000);
                 if (!user.IsAlive)
                 {
-                    Console.WriteLine("사망");
+                    break;
                 }
-                else
-                    Console.WriteLine("생존");
             }
 
         }
-        private static void SendPing(Chat.Packet packet, TcpClient client)
+        private static void SendPing(Chat.Packet packet, User user)
         {
-            string message = JsonConvert.SerializeObject(packet);
-            byte[] dataBytes = Encoding.UTF8.GetBytes(message);
+            var client = user.Client;
+            try
+            {
+                user.IsAlive = false;
+                string message = JsonConvert.SerializeObject(packet);
+                byte[] dataBytes = Encoding.UTF8.GetBytes(message);
 
-            //byte[] dataBytes = MessagePackSerializer.Serialize(packet);
-            // 데이터의 길이를 구하고 전송
-            int sendDataLength = dataBytes.Length;
-            byte[] byteLength = BitConverter.GetBytes(sendDataLength);
+                //byte[] dataBytes = MessagePackSerializer.Serialize(packet);
+                // 데이터의 길이를 구하고 전송
+                int sendDataLength = dataBytes.Length;
+                byte[] byteLength = BitConverter.GetBytes(sendDataLength);
 
-            var stream = client.GetStream();
-            //-- 데이터 크기 전송
-            stream.Write(byteLength, 0, byteLength.Length);
-            //-- 실제 데이터 전송
-            stream.Write(dataBytes, 0, dataBytes.Length);
+                var stream = client!.GetStream();
+                //-- 데이터 크기 전송
+                stream.Write(byteLength, 0, byteLength.Length);
+                //-- 실제 데이터 전송
+                stream.Write(dataBytes, 0, dataBytes.Length);
+            }
+            catch (IOException)
+            {
+                client!.Dispose();
+            }
+
         }
     }
 

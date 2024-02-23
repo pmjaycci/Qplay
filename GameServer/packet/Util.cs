@@ -17,6 +17,8 @@ namespace GameInfo
 {
     public class User
     {
+        public TcpClient? Client { get; set; }
+        public bool IsAlive { get; set; }
         public int State { get; set; }
         public int RoomNumber { get; set; }
         public int SlotNumber { get; set; }

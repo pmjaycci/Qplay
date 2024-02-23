@@ -18,13 +18,14 @@ class Program
 
         //-- DB테이블 캐싱
         await Database.GetInstance().LoadTableDatabase();
+        Console.WriteLine("----------------------------------------------------------");
 
         ApiServer apiServer = new ApiServer();
         var api = Task.Run(() => apiServer.RunHttpServer(cts.Token));
 
         Server gameServer = new Server();
-        var game = Task.Run(() => gameServer.RunTcpServer(cts.Token));
-        Task.WaitAll(game, api);
+        await Task.Run(() => gameServer.RunTcpServer(cts.Token));
+        await api;
         cts.Cancel();
     }
 }

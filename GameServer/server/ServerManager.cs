@@ -37,7 +37,7 @@ namespace server
 
         //-- 유저 정보 캐싱 : 상태, 방번호, 이름, 착용아이템 등..
         public ConcurrentDictionary<string, User> Users = new ConcurrentDictionary<string, User>();
-        public ConcurrentDictionary<string, TcpClient> Clients = new ConcurrentDictionary<string, TcpClient>();
+        //public ConcurrentDictionary<string, TcpClient> Clients = new ConcurrentDictionary<string, TcpClient>();
         //-- 생성된 채팅방 정보 캐싱 : 방 제목, 방장 이름, 입장 유저 정보
         public ConcurrentDictionary<int, Room> Rooms = new ConcurrentDictionary<int, Room>();
         public ConcurrentQueue<ServerPacket.Packet>? ChatMessages = new ConcurrentQueue<ServerPacket.Packet>();
@@ -66,6 +66,10 @@ namespace server
         {
             switch (opcode)
             {
+                case (int)Opcode.Ping:
+                    return "Ping";
+                case (int)Opcode.Chat:
+                    return "Chat";
                 case (int)Opcode.JoinGame:
                     return "JoinGame";
                 case (int)Opcode.AddUserLobbyMember:

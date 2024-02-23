@@ -3,8 +3,10 @@ using System.Formats.Asn1;
 using System.Net;
 using System.Net.Sockets;
 using System.Text;
+using GameInfo;
 using Microsoft.AspNetCore.Mvc;
 using Newtonsoft.Json;
+using Org.BouncyCastle.Utilities.IO;
 using Util;
 using ZstdNet;
 
@@ -26,12 +28,13 @@ namespace server
             //-- 클라이언트로부터 들어온 메세지 처리
             var connect = Task.Run(() => ConnectClients(tcpListener, cancellationToken));
             //-- 보내야될 메세지들을 처리
-            var sendMessages = Task.Run(() => SendMessages(cancellationToken));
-            Task.WaitAll(connect, sendMessages);
+            var read = Task.Run(() => ReadGameMessages(cancellationToken));
+            Task.WaitAll(connect, read);
+
         }
 
         //-- 채팅서버 클라이언트 요청 대기
-        private static async Task ConnectClients(TcpListener tcpListener, CancellationToken cancellationToken)
+        private static void ConnectClients(TcpListener tcpListener, CancellationToken cancellationToken)
         {
             try
             {
@@ -40,7 +43,7 @@ namespace server
                     TcpClient client;
                     try
                     {
-                        client = await tcpListener.AcceptTcpClientAsync();
+                        client = tcpListener.AcceptTcpClient();
                     }
                     catch (ObjectDisposedException)
                     {
@@ -63,9 +66,10 @@ namespace server
             string userName = "";
             var ip = $"{((IPEndPoint)client.Client.RemoteEndPoint!).Address}";
             var port = $"{((IPEndPoint)client.Client.RemoteEndPoint!).Port}";
+            var serverManager = ServerManager.GetInstance();
+            var users = serverManager.Users;
             try
             {
-                Console.WriteLine($"TCP 클라이언트 연결됨: {ip}:{port}");
 
                 //-- 호출 들어온 유저의 스트림
                 NetworkStream stream = client.GetStream();
@@ -85,16 +89,19 @@ namespace server
                     {
                         string request = Encoding.UTF8.GetString(buffer, 0, bytesRead);
                         var packet = JsonConvert.DeserializeObject<ClientPacket.Packet>(request);
-                        var users = ServerManager.GetInstance().Users;
                         userName = packet!.UserName!;
                         if (!users.ContainsKey(userName)) break;
                         var user = users[userName];
                         if (packet!.Opcode == (int)Opcode.JoinGame)
                         {
-                            var clients = ServerManager.GetInstance().Clients;
-                            clients.TryAdd(userName, client);
-                            Console.WriteLine($"클라이언트 추가::[{userName}]");
+                            user.Client = client;
+                            Console.WriteLine($"TCP 클라이언트 연결됨: {ip}:{port} / Users Count [{users.Count}]");
 
+                            ThreadPool.QueueUserWorkItem(_ => PingCheck(user, client));
+                        }
+                        if (packet.Opcode == (int)Opcode.Ping)
+                        {
+                            user.IsAlive = true;
                         }
                         if (packet!.Opcode == (int)Opcode.Logout)
                         {
@@ -104,14 +111,19 @@ namespace server
                     }
                 }
             }
+            catch (IOException)
+            {
+                Console.WriteLine($"유저 접속 종료! 유저명:[{userName}]");
+
+            }
             catch (Exception ex)
             {
                 Console.WriteLine($"[HandleTcpClientAsync] 예외 발생: {ex.Message}");
             }
             finally
             {
-                var serverManager = ServerManager.GetInstance();
-                var users = serverManager.Users;
+                var test = new ExitRoomController();
+                await test.ExitRoom(userName, (int)Opcode.Logout);
                 /*
                 foreach (var user in users.Values)
                 {
@@ -121,37 +133,40 @@ namespace server
                 */
                 if (users.ContainsKey(userName))
                 {
-                    client.Close();
+                    client.Dispose();
+
                     users.TryRemove(userName!, out _);
-                    Console.WriteLine($"유저 로그아웃! 정보 제거: {userName}");
                 }
 
-                Console.WriteLine($"TCP 클라이언트 연결 해제됨: {ip}:{port}");
+                Console.WriteLine($"TCP 클라이언트 연결 해제됨: {ip}:{port} [{userName}] 정보 제거 Users Count [{users.Count}]");
             }
         }
 
 
-        private async Task SendMessages(CancellationToken cancellationToken)
+        private static void ReadGameMessages(CancellationToken cancellationToken)
         {
             while (!cancellationToken.IsCancellationRequested)
             {
                 // SemaphoreSlim의 WaitAsync를 사용하여 대기
                 var semaphore = ServerManager.GetInstance().ChatSemaphore;
-                Console.WriteLine("SendMessages:: 메시지 대기중");
-                await semaphore.WaitAsync();
+                semaphore.Wait();
+
                 var messages = ServerManager.GetInstance().ChatMessages;
                 if (!messages!.IsEmpty && messages.TryDequeue(out var message))
                 {
                     var readMessage = new ReadMessages();
                     var messageString = JsonConvert.SerializeObject(message);
-                    Console.WriteLine($"SendMessages::\nㄴMessage{messageString}");
-                    var clients = await readMessage.GetUserClients(message!);
-                    await SendMessage(clients!, message);
+                    Task.Run(() =>
+                    {
+                        var clients = readMessage.GetUserClients(message!);
+                        if (clients.Count > 0)
+                            SendGameMessage(clients!, message);
+                    });
                 }
             }
         }
 
-        private async Task SendMessage(ConcurrentQueue<TcpClient> clients, ServerPacket.Packet message)
+        private static void SendGameMessage(ConcurrentQueue<TcpClient> clients, ServerPacket.Packet message)
         {
             while (clients.TryDequeue(out var client))
             {
@@ -170,21 +185,63 @@ namespace server
                     byte[] byteLength = BitConverter.GetBytes(sendDataLength);
 
                     //-- 데이터 크기 전송
-                    await stream.WriteAsync(byteLength, 0, byteLength.Length, token);
+                    stream.Write(byteLength, 0, byteLength.Length);
                     //-- 실제 데이터 전송
-                    await stream.WriteAsync(dataBytes, 0, dataBytes.Length, token);
+                    stream.Write(dataBytes, 0, dataBytes.Length);
+                    Console.WriteLine($"SendGameMessage:{sendMessage}");
+
                 }
                 catch (Exception ex)
                 {
-                    Console.WriteLine($"[SendMessage] 예외 발생: {ex.Message}");
+                    Console.WriteLine($"[SendGameMessage] 예외 발생: {ex.Message}");
                 }
-
 
             }
 
         }
+        private static void PingCheck(User user, TcpClient client)
+        {
+            var packet = new ServerPacket.Packet();
+            packet!.Opcode = (int)Opcode.Ping;
+            packet.Message = "PingPong";
 
+            while (true)
+            {
+                if (user.IsAlive)
+                    SendPing(packet, user, client);
+                Thread.Sleep(3000);
+                if (!user.IsAlive)
+                {
+                    break;
+                }
+            }
 
+        }
+        private static void SendPing(ServerPacket.Packet packet, User user, TcpClient client)
+        {
+            try
+            {
+                user.IsAlive = false;
+                string message = JsonConvert.SerializeObject(packet);
+                byte[] dataBytes = Encoding.UTF8.GetBytes(message);
+
+                //byte[] dataBytes = MessagePackSerializer.Serialize(packet);
+                // 데이터의 길이를 구하고 전송
+                int sendDataLength = dataBytes.Length;
+                byte[] byteLength = BitConverter.GetBytes(sendDataLength);
+
+                var stream = client!.GetStream();
+                //-- 데이터 크기 전송
+                stream.Write(byteLength, 0, byteLength.Length);
+                //-- 실제 데이터 전송
+                stream.Write(dataBytes, 0, dataBytes.Length);
+            }
+            catch (IOException)
+            {
+                client!.Dispose();
+            }
+
+        }
     }
 
 }

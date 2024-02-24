@@ -208,7 +208,10 @@ namespace server
             while (true)
             {
                 if (user.IsAlive)
-                    SendPing(packet, user, client);
+                {
+                    var isAbleSendPing = SendPing(packet, user, client);
+                    if (!isAbleSendPing) break;
+                }
                 Thread.Sleep(3000);
                 if (!user.IsAlive)
                 {
@@ -217,7 +220,7 @@ namespace server
             }
 
         }
-        private static void SendPing(ServerPacket.Packet packet, User user, TcpClient client)
+        private static bool SendPing(ServerPacket.Packet packet, User user, TcpClient client)
         {
             try
             {
@@ -235,10 +238,12 @@ namespace server
                 stream.Write(byteLength, 0, byteLength.Length);
                 //-- 실제 데이터 전송
                 stream.Write(dataBytes, 0, dataBytes.Length);
+                return true;
             }
             catch (IOException)
             {
                 client!.Dispose();
+                return false;
             }
 
         }

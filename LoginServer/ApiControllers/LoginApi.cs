@@ -83,7 +83,7 @@ namespace LoginApi
 
             foreach (var item in response.Items!)
             {
-                Console.WriteLine($"ItemId::[{item.Key}]/ isEquip [{item.Value}]");
+                //Console.WriteLine($"ItemId::[{item.Key}]/ isEquip [{item.Value}]");
                 loginGameServerPacket.Items.TryAdd(item.Key, item.Value);
             }
             var message = await gameServer.RequestLogin(loginGameServerPacket);
@@ -137,35 +137,48 @@ namespace LoginApi
         public async Task<Response.Packet> RequestLogin(Request.LoginGameServer login)
         {
             // 대상 서버의 URL
-            string url = "http://localhost:8070/api/login";
-
+            //string url = "http://localhost:8070/api/login";
+            string url = "http://13.125.254.231:8070/api/login";
             // POST 요청에 보낼 데이터
             string message = JsonConvert.SerializeObject(login);
-            Console.WriteLine("TEST:" + message);
-            // HTTP 클라이언트 생성
-            using (HttpClient httpClient = new HttpClient())
+            //Console.WriteLine("TEST:" + message);
+            try
             {
-                // HTTP 요청 생성
-                HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Post, url);
-                request!.Content = new StringContent(message, Encoding.UTF8, "application/json");
-                //request.Headers.Add("MessageType", ((int)RequestHeader.JoinGame).ToString());
-
-                // HTTP 요청 보내기
-                HttpResponseMessage response = await httpClient.SendAsync(request);
-
-                // 응답 처리
-                if (response.IsSuccessStatusCode)
+                // HTTP 클라이언트 생성
+                using (HttpClient httpClient = new HttpClient())
                 {
-                    string responseBody = await response.Content.ReadAsStringAsync();
-                    var packet = JsonConvert.DeserializeObject<Response.Packet>(responseBody);
-                    return packet!;
-                }
-                else
-                {
-                    Console.WriteLine("오류 응답 코드: " + response.StatusCode);
-                    return null!;
+                    // HTTP 요청 생성
+                    HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Post, url);
+                    request!.Content = new StringContent(message, Encoding.UTF8, "application/json");
+                    //request.Headers.Add("MessageType", ((int)RequestHeader.JoinGame).ToString());
+
+                    // HTTP 요청 보내기
+                    HttpResponseMessage response = await httpClient.SendAsync(request);
+
+                    // 응답 처리
+                    if (response.IsSuccessStatusCode)
+                    {
+                        string responseBody = await response.Content.ReadAsStringAsync();
+                        var packet = JsonConvert.DeserializeObject<Response.Packet>(responseBody);
+                        return packet!;
+                    }
+                    else
+                    {
+                        Console.WriteLine("오류 응답 코드: " + response.StatusCode);
+                        return null!;
+                    }
                 }
             }
+            catch (Exception)
+            {
+                Console.WriteLine("게임서버 연결 오류!!");
+                var packet = new Response.Packet();
+                packet!.MessageCode = (int)MessageCode.Fail;
+                packet.Message = "게임 서버와 연결에 실패하였습니다.";
+                return packet;
+
+            }
+
         }
     }
 

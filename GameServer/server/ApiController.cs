@@ -45,9 +45,15 @@ namespace server
                     user.Money = request.Money;
                     user.Items = request.Items;
                     users.TryAdd(userName, user);
+
+                    response.MessageCode = (int)MessageCode.Success;
+                    response.Message = "성공적으로 로그인 하였습니다.";
                 }
                 else
                 {
+                    response.MessageCode = (int)MessageCode.Fail;
+                    response.Message = "이미 접속중입니다.";
+                    /*
                     var user = users[userName];
                     user!.UserName = request.UserName;
                     user.State = request.State;
@@ -57,12 +63,12 @@ namespace server
                     user.Model = request.Model;
                     user.Money = request.Money;
                     user.Items = request.Items;
+                    */
                 }
 
             });
 
-            response.MessageCode = (int)MessageCode.Success;
-            response.Message = "성공적으로 로그인 하였습니다.";
+
             return response;
         }
 

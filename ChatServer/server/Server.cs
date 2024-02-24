@@ -79,15 +79,15 @@ namespace server
                             Users.TryAdd(userName!, newUser);
                             ThreadPool.QueueUserWorkItem(_ => PingCheck(Users[userName!]));
                         }
+
+                        var user = Users[userName!];
+                        user.State = state;
+                        user.RoomNumber = roomNumber;
                         if (packet!.Opcode == (int)Opcode.Ping)
                         {
                             Users[userName!].IsAlive = true;
                             continue;
                         }
-                        var user = Users[userName!];
-                        user.State = state;
-                        user.RoomNumber = roomNumber;
-
                         await Task.Run(() => SendMessage(packet, user));
                     }
                 }
@@ -119,17 +119,22 @@ namespace server
             // 데이터의 길이를 구하고 전송
             int sendDataLength = dataBytes.Length;
             byte[] byteLength = BitConverter.GetBytes(sendDataLength);
-
+            Console.WriteLine("----------------------------------------");
+            var receiveUsers = "수신 유저 ";
+            var allUsers = "전체유저 ";
             foreach (var user in Users.Values)
             {
                 var stream = user.Client!.GetStream();
-
+                allUsers += $"[{user.UserName} 상태({user.State}) 방번호({user.RoomNumber})]";
                 if (user.State != chatUser.State || user.RoomNumber != chatUser.RoomNumber) continue;
+                receiveUsers += $"[{user.UserName} 상태({user.State}) 방번호({user.RoomNumber})]";
                 //-- 데이터 크기 전송
                 stream.Write(byteLength, 0, byteLength.Length);
                 //-- 실제 데이터 전송
                 stream.Write(dataBytes, 0, dataBytes.Length);
             }
+            Console.WriteLine($"송신유저 [{chatUser.UserName} 상태({chatUser.State}) 방번호({chatUser.RoomNumber})]\n{allUsers}\n{receiveUsers}\n메시지:{packet.Message}");
+            Console.WriteLine("----------------------------------------");
         }
         private static void PingCheck(User user)
         {
@@ -141,7 +146,10 @@ namespace server
             while (true)
             {
                 if (user.IsAlive)
-                    SendPing(packet, user);
+                {
+                    var isAbleSendPing = SendPing(packet, user);
+                    if (!isAbleSendPing) break;
+                }
                 Thread.Sleep(3000);
                 if (!user.IsAlive)
                 {
@@ -150,7 +158,7 @@ namespace server
             }
 
         }
-        private static void SendPing(Chat.Packet packet, User user)
+        private static bool SendPing(Chat.Packet packet, User user)
         {
             var client = user.Client;
             try
@@ -169,10 +177,12 @@ namespace server
                 stream.Write(byteLength, 0, byteLength.Length);
                 //-- 실제 데이터 전송
                 stream.Write(dataBytes, 0, dataBytes.Length);
+                return true;
             }
             catch (IOException)
             {
                 client!.Dispose();
+                return false;
             }
 
         }

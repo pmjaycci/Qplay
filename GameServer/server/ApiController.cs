@@ -672,6 +672,78 @@ namespace server
 
     }
 
+    [ApiController]
+    [Route("api/[controller]")]
+    public class ChangeModelController : ControllerBase
+    {
+        [HttpPost]
+        public async Task<IActionResult> Post([FromBody] ApiRequest.ChangeModel request)
+        {
+            string? testData = JsonConvert.SerializeObject(request);
+            Console.WriteLine($"ChangeModelController:{testData}");
+
+            ApiResponse.ChangeModel response = await ChangeModel(request.ModelId!, request.UserName!);
+            string? jsonData = JsonConvert.SerializeObject(response);
+            Console.WriteLine($"ChangeModelController:Response:{jsonData}");
+
+            return Ok(jsonData);
+        }
+        public async Task<ApiResponse.ChangeModel> ChangeModel(int modelId, string userName)
+        {
+            var response = new ApiResponse.ChangeModel();
+            var users = ServerManager.GetInstance().Users;
+            if (!users.ContainsKey(userName))
+            {
+                var message = $"WebReadMessages.ChangeModel Error!! {userName} KeyNotFound";
+                response.MessageCode = (int)MessageCode.Fail;
+                response.Message = message;
+                Console.WriteLine($"ChangeModelController:ChangeModel:{message}");
+                return response;
+            }
+
+            var user = ServerManager.GetInstance().Users[userName];
+            var items = user.Items;
+            var price = 1000;
+            if (user.Money < price)
+            {
+                response.MessageCode = (int)MessageCode.Fail;
+                response.Message = "금액이 부족합니다.";
+                return response;
+            }
+            if (user.Model == modelId)
+            {
+                response.MessageCode = (int)MessageCode.Fail;
+                response.Message = "이미 같은 성형입니다.";
+                return response;
+            }
+
+            //-- 유저 인벤토리 DB 업데이트
+            string sql = $"UPDATE account SET model = {modelId}, money = money - {price} WHERE uuid = @uuid";
+            var param = new Dictionary<string, object?>();
+            param["@uuid"] = userName;
+            int messageCode = await Database.GetInstance().ExecuteQuery(sql, param, (int)DB.UserDB);
+
+            if (messageCode == (int)MessageCode.Success)
+            {
+                user.Money -= price;
+                user.Model = modelId;
+                //-- response 데이터 삽입
+                response.Message = "성공적으로 변경되었습니다.";
+                response.MessageCode = (int)MessageCode.Success;
+                response.ModelId = modelId;
+                response.Money = user.Money;
+            }
+            else
+            {
+                //-- response 데이터 삽입
+                response.Message = "서버에서 에러가 발생하였습니다.";
+                response.MessageCode = (int)MessageCode.Fail;
+            }
+
+            return response;
+        }
+
+    }
 
 
 

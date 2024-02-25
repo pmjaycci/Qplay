@@ -137,8 +137,9 @@ namespace LoginApi
         public async Task<Response.Packet> RequestLogin(Request.LoginGameServer login)
         {
             // 대상 서버의 URL
-            //string url = "http://localhost:8070/api/login";
-            string url = "http://13.125.254.231:8070/api/login";
+            string url = "http://localhost:8070/api/login";
+            //string url = "http://13.125.254.231:8070/api/login";
+            //string url = "http://0.0.0.0:8070/api/login";
             // POST 요청에 보낼 데이터
             string message = JsonConvert.SerializeObject(login);
             //Console.WriteLine("TEST:" + message);
@@ -169,9 +170,9 @@ namespace LoginApi
                     }
                 }
             }
-            catch (Exception)
+            catch (Exception e)
             {
-                Console.WriteLine("게임서버 연결 오류!!");
+                Console.WriteLine("게임서버 연결 오류!!\n" + e.Message);
                 var packet = new Response.Packet();
                 packet!.MessageCode = (int)MessageCode.Fail;
                 packet.Message = "게임 서버와 연결에 실패하였습니다.";

@@ -1,11 +1,11 @@
 version: '3.8'
 services:
-  qplay_chat_server:
-    container_name: qplay_chat_server
-    image: qplay_chat:latest
+  qplay_game_server:
+    container_name: qplay_game_server
+    image: qplay_game:latest
     build:
       context: .
       dockerfile: Dockerfile
     ports:
-      - "5001:81"
+      - "8070:8070"
       - "8080:8080"
